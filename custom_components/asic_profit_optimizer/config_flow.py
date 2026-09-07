@@ -73,13 +73,10 @@ def _setup_schema() -> vol.Schema:
 
 
 def _options_schema() -> vol.Schema:
-    """Build editable runtime options.
-
-    Miner identity/entity mappings remain entry data. The measured profile and
-    tuning thresholds are safe to change as options and reload automatically.
-    """
+    """Build editable miner identity/profile options."""
     return vol.Schema(
         {
+            vol.Required(CONF_NAME): selector.TextSelector(),
             vol.Required(CONF_CURVE): selector.TextSelector(
                 selector.TextSelectorConfig(multiline=True)
             ),
@@ -108,7 +105,6 @@ def _options_schema() -> vol.Schema:
 def _initial_values() -> dict[str, Any]:
     """Return safe starter values for a new miner."""
     return {
-        CONF_NAME: "ASIC Miner",
         CONF_CURVE: (
             "# target_w, actual_wall_w, hashrate_THs\n"
             "600,600,7.5"
@@ -122,6 +118,9 @@ def _validate_curve(user_input: dict[str, Any]) -> dict[str, str]:
     """Validate the measured miner profile."""
     errors: dict[str, str] = {}
 
+    if not str(user_input.get(CONF_NAME, "")).strip():
+        errors[CONF_NAME] = "invalid_name"
+
     try:
         parse_curve(user_input[CONF_CURVE])
     except ValueError:
@@ -133,8 +132,6 @@ def _validate_curve(user_input: dict[str, Any]) -> dict[str, str]:
 class AsicProfitOptimizerConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     """Configure one miner through the Home Assistant UI."""
 
-    # Keep the config-entry schema version unchanged so existing v0.1 entries
-    # upgrade to v0.2 without requiring a migration.
     VERSION = 1
 
     async def async_step_user(
@@ -147,6 +144,7 @@ class AsicProfitOptimizerConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             errors = _validate_curve(user_input)
 
             if not errors:
+                user_input[CONF_NAME] = str(user_input[CONF_NAME]).strip()
                 await self.async_set_unique_id(user_input[CONF_POWER_LIMIT_ENTITY])
                 self._abort_if_unique_id_configured()
 
@@ -171,7 +169,7 @@ class AsicProfitOptimizerConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
 
 class AsicProfitOptimizerOptionsFlow(OptionsFlowWithReload):
-    """Edit the power/hashrate profile and tuning behavior, then reload."""
+    """Edit miner name, power/hashrate profile and tuning behavior."""
 
     async def async_step_init(
         self, user_input: dict[str, Any] | None = None
@@ -183,9 +181,20 @@ class AsicProfitOptimizerOptionsFlow(OptionsFlowWithReload):
         if user_input is not None:
             errors = _validate_curve(user_input)
             if not errors:
+                user_input[CONF_NAME] = str(user_input[CONF_NAME]).strip()
+
+                # Keep the config-entry heading in Devices & services aligned
+                # with the miner name shown by the optimizer device.
+                if self.config_entry.title != user_input[CONF_NAME]:
+                    self.hass.config_entries.async_update_entry(
+                        self.config_entry,
+                        title=user_input[CONF_NAME],
+                    )
+
                 return self.async_create_entry(data=user_input)
 
         values = user_input or {
+            CONF_NAME: current[CONF_NAME],
             CONF_CURVE: current[CONF_CURVE],
             CONF_MIN_POWER_CHANGE: current.get(
                 CONF_MIN_POWER_CHANGE, DEFAULT_MIN_POWER_CHANGE

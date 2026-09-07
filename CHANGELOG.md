@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.2.2
+
+- Add **Miner name** to the Configure flow so an existing optimizer entry can be renamed without deleting and recreating it.
+- Keep the Home Assistant config-entry heading synchronized with the configured miner name.
+- Use the configured miner name as the optimizer device's default name after reload.
+- Remove the generic `ASIC Miner` default from new setup so users choose a recognizable per-miner name.
+- Keep profile editing, entity mappings, Mining Request, and power-target behavior unchanged.
+
 ## 0.2.1
 
 - Reclassify ASIC Profit Optimizer from a Home Assistant `helper` integration to a `device` integration.
