@@ -100,8 +100,9 @@ def _validate(user_input: dict[str, Any]) -> dict[str, str]:
 class AsicProfitOptimizerConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     """Configure one miner through the Home Assistant UI."""
 
-    VERSION = 2
-    MINOR_VERSION = 0
+    # Keep the config-entry schema version unchanged so existing v0.1 entries
+    # upgrade to v0.2 without requiring a migration.
+    VERSION = 1
 
     async def async_step_user(
         self, user_input: dict[str, Any] | None = None
