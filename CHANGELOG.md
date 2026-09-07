@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.3.4
+
+- Give each calculated profitability sensor a distinct icon that better matches the metric it represents.
+- Add separate icons for Profitable, Mining Request, and Auto Optimize.
+- Keep all calculation, power-target, dashboard, and arbitration behavior unchanged.
+
 ## 0.3.3
 
 - Use the Home Assistant configured currency instead of hardcoded euro units.
@@ -37,7 +43,7 @@
 - Add per-miner dashboard cards with live telemetry, optimal target, optimal profit, break-even electricity price, profile size, and status.
 - Allow Auto Optimize to be toggled per miner directly from the farm dashboard.
 - Add an authenticated Home Assistant WebSocket endpoint for farm snapshots.
-- Serve the dashboard frontend from a versioned integration static path.
+- Serve the dashboard frontend from a versioned static integration path.
 - Treat negative per-miner optimal profit as OFF when calculating the farm-wide optimal mining profit.
 - Add farm aggregation tests.
 - Keep the dashboard and optimizer mining-only; no heating logic or physical mains switching is added.
@@ -63,7 +69,7 @@
 - Preserve existing v0.1 config entries without migration.
 - Add **Optimal Efficiency**, **Optimal Daily Profit**, and **Break-even Electricity Price** sensors.
 - Treat unavailable live hashrate as zero when measured wall power is effectively zero, while keeping optimal calculations profile-based.
-- Keep the integration mining-only: no heating logic and no physical mains switching.
+- Keep the integration mining-only: no heating logic and no mains switching.
 - Update Home Assistant/HACS metadata and documentation.
 
 ## 0.1.0
