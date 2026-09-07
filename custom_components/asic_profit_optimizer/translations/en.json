@@ -29,8 +29,7 @@
       }
     },
     "error": {
-      "invalid_curve": "Invalid curve. Use one line per point: target_w, actual_wall_w, hashrate_THs",
-      "already_configured": "That writable miner power-limit entity is already assigned to another optimizer."
+      "invalid_curve": "Invalid curve. Use one line per point: target_w, actual_wall_w, hashrate_THs"
     },
     "abort": {
       "already_configured": "This miner power-limit entity is already configured."
@@ -39,25 +38,14 @@
   "options": {
     "step": {
       "init": {
-        "title": "Configure ASIC miner",
-        "description": "Update entity mappings, the measured efficiency curve, and retuning behavior. Changes are applied after Submit and the integration reloads automatically.",
+        "title": "Configure miner profile",
+        "description": "Update the measured power/hashrate profile and retuning behavior. Changes are applied after Submit and the integration reloads automatically.",
         "data": {
-          "name": "Miner name",
-          "hashprice_sensor": "Hashprice sensor",
-          "electricity_price_sensor": "Electricity price sensor",
-          "hashrate_sensor": "Live hashrate sensor",
-          "power_sensor": "Live power sensor",
-          "power_limit_entity": "Writable miner power-limit entity",
           "curve": "Measured efficiency curve",
           "min_power_change": "Minimum power change before retuning",
           "startup_wait": "Maximum startup wait"
         },
         "data_description": {
-          "hashprice_sensor": "Net hashprice in currency per TH per day.",
-          "electricity_price_sensor": "Electricity price in the same currency per kWh.",
-          "hashrate_sensor": "Live miner hashrate in TH/s.",
-          "power_sensor": "Live power in W; true smart-plug wall power is preferred.",
-          "power_limit_entity": "Writable number entity that controls the miner target wattage.",
           "curve": "Edit or add rows as: target_w, actual_wall_w, hashrate_THs.",
           "min_power_change": "Minimum target change required before the optimizer retunes the miner.",
           "startup_wait": "Maximum time to wait for the writable power-limit entity after an external automation powers the miner."
@@ -65,8 +53,7 @@
       }
     },
     "error": {
-      "invalid_curve": "Invalid curve. Use one line per point: target_w, actual_wall_w, hashrate_THs",
-      "already_configured": "That writable miner power-limit entity is already assigned to another optimizer."
+      "invalid_curve": "Invalid curve. Use one line per point: target_w, actual_wall_w, hashrate_THs"
     }
   }
 }
