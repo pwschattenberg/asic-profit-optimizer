@@ -27,8 +27,8 @@ from .const import (
 from .optimizer import parse_curve
 
 
-def _schema() -> vol.Schema:
-    """Build the common setup/options form schema."""
+def _setup_schema() -> vol.Schema:
+    """Build the initial miner setup form."""
     return vol.Schema(
         {
             vol.Required(CONF_NAME): selector.TextSelector(),
@@ -72,6 +72,39 @@ def _schema() -> vol.Schema:
     )
 
 
+def _options_schema() -> vol.Schema:
+    """Build editable runtime options.
+
+    Miner identity/entity mappings remain entry data. The measured profile and
+    tuning thresholds are safe to change as options and reload automatically.
+    """
+    return vol.Schema(
+        {
+            vol.Required(CONF_CURVE): selector.TextSelector(
+                selector.TextSelectorConfig(multiline=True)
+            ),
+            vol.Optional(CONF_MIN_POWER_CHANGE): selector.NumberSelector(
+                selector.NumberSelectorConfig(
+                    min=0,
+                    max=2000,
+                    step=10,
+                    mode=selector.NumberSelectorMode.BOX,
+                    unit_of_measurement="W",
+                )
+            ),
+            vol.Optional(CONF_STARTUP_WAIT): selector.NumberSelector(
+                selector.NumberSelectorConfig(
+                    min=30,
+                    max=1800,
+                    step=30,
+                    mode=selector.NumberSelectorMode.BOX,
+                    unit_of_measurement="s",
+                )
+            ),
+        }
+    )
+
+
 def _initial_values() -> dict[str, Any]:
     """Return safe starter values for a new miner."""
     return {
@@ -85,8 +118,8 @@ def _initial_values() -> dict[str, Any]:
     }
 
 
-def _validate(user_input: dict[str, Any]) -> dict[str, str]:
-    """Validate values shared by setup and options flows."""
+def _validate_curve(user_input: dict[str, Any]) -> dict[str, str]:
+    """Validate the measured miner profile."""
     errors: dict[str, str] = {}
 
     try:
@@ -111,7 +144,7 @@ class AsicProfitOptimizerConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         errors: dict[str, str] = {}
 
         if user_input is not None:
-            errors = _validate(user_input)
+            errors = _validate_curve(user_input)
 
             if not errors:
                 await self.async_set_unique_id(user_input[CONF_POWER_LIMIT_ENTITY])
@@ -125,7 +158,9 @@ class AsicProfitOptimizerConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         suggested = user_input or _initial_values()
         return self.async_show_form(
             step_id="user",
-            data_schema=self.add_suggested_values_to_schema(_schema(), suggested),
+            data_schema=self.add_suggested_values_to_schema(
+                _setup_schema(), suggested
+            ),
             errors=errors,
         )
 
@@ -136,7 +171,7 @@ class AsicProfitOptimizerConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
 
 class AsicProfitOptimizerOptionsFlow(OptionsFlowWithReload):
-    """Edit miner mappings and power/hashrate profile, then reload."""
+    """Edit the power/hashrate profile and tuning behavior, then reload."""
 
     async def async_step_init(
         self, user_input: dict[str, Any] | None = None
@@ -146,38 +181,22 @@ class AsicProfitOptimizerOptionsFlow(OptionsFlowWithReload):
         errors: dict[str, str] = {}
 
         if user_input is not None:
-            errors = _validate(user_input)
-
+            errors = _validate_curve(user_input)
             if not errors:
-                new_power_entity = user_input[CONF_POWER_LIMIT_ENTITY]
-
-                for other in self.hass.config_entries.async_entries(DOMAIN):
-                    if (
-                        other.entry_id != self.config_entry.entry_id
-                        and other.unique_id == new_power_entity
-                    ):
-                        errors["base"] = "already_configured"
-                        break
-
-            if not errors:
-                new_name = user_input[CONF_NAME]
-                new_power_entity = user_input[CONF_POWER_LIMIT_ENTITY]
-
-                if (
-                    self.config_entry.title != new_name
-                    or self.config_entry.unique_id != new_power_entity
-                ):
-                    self.hass.config_entries.async_update_entry(
-                        self.config_entry,
-                        title=new_name,
-                        unique_id=new_power_entity,
-                    )
-
                 return self.async_create_entry(data=user_input)
 
-        values = user_input or current
+        values = user_input or {
+            CONF_CURVE: current[CONF_CURVE],
+            CONF_MIN_POWER_CHANGE: current.get(
+                CONF_MIN_POWER_CHANGE, DEFAULT_MIN_POWER_CHANGE
+            ),
+            CONF_STARTUP_WAIT: current.get(CONF_STARTUP_WAIT, DEFAULT_STARTUP_WAIT),
+        }
+
         return self.async_show_form(
             step_id="init",
-            data_schema=self.add_suggested_values_to_schema(_schema(), values),
+            data_schema=self.add_suggested_values_to_schema(
+                _options_schema(), values
+            ),
             errors=errors,
         )
