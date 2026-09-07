@@ -19,10 +19,30 @@ const number = (value, digits = 2) => {
   });
 };
 
-const money = (value, suffix = "") =>
+const currencyAmount = (value, currency, digits = 4, signed = false) => {
+  if (value === null || value === undefined || Number.isNaN(Number(value))) {
+    return "—";
+  }
+
+  const code = currency || "EUR";
+  try {
+    return new Intl.NumberFormat(undefined, {
+      style: "currency",
+      currency: code,
+      maximumFractionDigits: digits,
+      minimumFractionDigits: 0,
+      signDisplay: signed ? "exceptZero" : "auto",
+    }).format(Number(value));
+  } catch (_err) {
+    const sign = signed && Number(value) > 0 ? "+" : "";
+    return `${sign}${number(value, digits)} ${code}`;
+  }
+};
+
+const money = (value, currency, suffix = "") =>
   value === null || value === undefined
     ? "—"
-    : `${Number(value) >= 0 ? "+" : ""}€${number(value, 4)}${suffix}`;
+    : `${currencyAmount(value, currency, 4, true)}${suffix}`;
 
 const profitClass = (value) =>
   value === null || value === undefined
@@ -136,6 +156,10 @@ class AsicProfitPanel extends HTMLElement {
     }
   }
 
+  _currency() {
+    return this._data?.currency || this._hass?.config?.currency || "EUR";
+  }
+
   _summaryCard(label, value, sub = "") {
     return `
       <div class="summary-card">
@@ -176,7 +200,7 @@ class AsicProfitPanel extends HTMLElement {
       return `— ${this._partial(completeKey)}`;
     }
 
-    return `${money(aggregateValue, suffix)} ${this._partial(completeKey)}`;
+    return `${money(aggregateValue, this._currency(), suffix)} ${this._partial(completeKey)}`;
   }
 
   _status(miner) {
@@ -232,8 +256,29 @@ class AsicProfitPanel extends HTMLElement {
     return `${number(miner.optimal_power_w, 0)} <span class="unit">W</span>`;
   }
 
+  _farmOptimalAction(farm, miners) {
+    if (miners.every((miner) => miner.optimal_profit_per_hour == null)) {
+      return '<span class="waiting-text">Waiting</span>';
+    }
+    if (farm.profitable_miners === 0) {
+      return '<span class="action-off">OFF</span>';
+    }
+    return `${farm.profitable_miners} mining`;
+  }
+
+  _optimalFarmSub(farm, miners) {
+    if (miners.every((miner) => miner.optimal_profit_per_hour == null)) {
+      return "waiting for market data";
+    }
+    if (farm.profitable_miners === 0) {
+      return "all miners off at optimum";
+    }
+    return money(farm.optimal_profit_per_day, this._currency(), "/day");
+  }
+
   _minerRow(miner) {
     const autoEntity = miner.entities?.auto_optimize;
+    const currency = this._currency();
     return `
       <tr>
         <td class="miner-cell">
@@ -244,22 +289,22 @@ class AsicProfitPanel extends HTMLElement {
         <td class="numeric">${number(miner.hashrate_ths, 3)} <span class="unit">TH/s</span></td>
         <td class="numeric">${number(miner.power_w, 1)} <span class="unit">W</span></td>
         <td class="numeric ${profitClass(miner.current_profit_per_hour)}">
-          ${money(miner.current_profit_per_hour, "/h")}
+          ${money(miner.current_profit_per_hour, currency, "/h")}
         </td>
         <td class="numeric action-cell">
           ${this._optimalAction(miner)}
         </td>
         <td class="numeric ${profitClass(miner.optimal_profit_per_hour)}">
-          ${money(miner.optimal_profit_per_hour, "/h")}
+          ${money(miner.optimal_profit_per_hour, currency, "/h")}
         </td>
         <td class="numeric ${profitClass(miner.optimal_profit_per_day)}">
-          ${money(miner.optimal_profit_per_day, "/day")}
+          ${money(miner.optimal_profit_per_day, currency, "/day")}
         </td>
         <td class="numeric">
           ${
             miner.break_even_electricity_price === null
               ? "—"
-              : `€${number(miner.break_even_electricity_price, 4)}<span class="unit">/kWh</span>`
+              : `${currencyAmount(miner.break_even_electricity_price, currency, 4)}<span class="unit">/kWh</span>`
           }
         </td>
         <td class="center">${this._request(miner)}</td>
@@ -289,6 +334,7 @@ class AsicProfitPanel extends HTMLElement {
     const farm = data?.farm;
     const miners = data?.miners || [];
     const shared = data?.shared || {};
+    const currency = this._currency();
 
     this.shadowRoot.innerHTML = `
       <style>
@@ -604,7 +650,7 @@ class AsicProfitPanel extends HTMLElement {
                   ${
                     shared.hashprice?.value == null
                       ? "waiting for market data"
-                      : `€${number(shared.hashprice.value, 6)}/TH/day`
+                      : `${currencyAmount(shared.hashprice.value, currency, 6)}/TH/day`
                   }
                 </div>
                 <div class="source-pill ${shared.electricity?.value == null ? "pending" : ""}">
@@ -612,7 +658,7 @@ class AsicProfitPanel extends HTMLElement {
                   ${
                     shared.electricity?.value == null
                       ? "waiting for data"
-                      : `€${number(shared.electricity.value, 4)}/kWh`
+                      : `${currencyAmount(shared.electricity.value, currency, 4)}/kWh`
                   }
                 </div>
               </div>
@@ -659,16 +705,14 @@ class AsicProfitPanel extends HTMLElement {
                   )
                 )}
                 ${this._summaryCard(
-                  "Optimal profit",
+                  "Optimal farm profit",
                   this._aggregateMoney(
                     "optimal_profit_per_hour",
                     farm.optimal_profit_per_hour,
                     "/h",
                     "optimal_profit"
                   ),
-                  miners.every((miner) => miner.optimal_profit_per_hour == null)
-                    ? "waiting for market data"
-                    : money(farm.optimal_profit_per_day, "/day")
+                  this._optimalFarmSub(farm, miners)
                 )}
                 ${this._summaryCard(
                   "Mining requests",
@@ -732,18 +776,9 @@ class AsicProfitPanel extends HTMLElement {
                               "/h",
                               "current_profit"
                             )}</td>
+                            <td class="numeric action-cell">${this._farmOptimalAction(farm, miners)}</td>
                             <td class="numeric">—</td>
-                            <td class="numeric ${profitClass(farm.optimal_profit_per_hour)}">${this._aggregateMoney(
-                              "optimal_profit_per_hour",
-                              farm.optimal_profit_per_hour,
-                              "/h",
-                              "optimal_profit"
-                            )}</td>
-                            <td class="numeric ${profitClass(farm.optimal_profit_per_day)}">${
-                              miners.every((miner) => miner.optimal_profit_per_day == null)
-                                ? "—"
-                                : money(farm.optimal_profit_per_day, "/day")
-                            }</td>
+                            <td class="numeric">—</td>
                             <td class="numeric">—</td>
                             <td class="center">${farm.mining_requested_miners}</td>
                             <td class="center">${farm.auto_optimize_miners}</td>
