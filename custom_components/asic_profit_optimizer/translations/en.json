@@ -17,11 +17,11 @@
           "startup_wait": "Maximum startup wait"
         },
         "data_description": {
-          "hashprice_sensor": "Net hashprice in currency per TH per day, for example BCH Hashprice in \u20ac/TH/day.",
+          "hashprice_sensor": "Net hashprice in currency per TH per day, for example BCH Hashprice in €/TH/day.",
           "electricity_price_sensor": "Electricity price in the same currency per kWh.",
-          "hashrate_sensor": "Live miner hashrate in TH/s. Used only for current-performance sensors.",
+          "hashrate_sensor": "Live miner hashrate in TH/s. Used for current-performance sensors.",
           "power_sensor": "Live power in W. Prefer true wall power from a smart plug when available.",
-          "power_limit_entity": "Writable number entity used to set the miner's target power, for example hass-miner's Power Limit.",
+          "power_limit_entity": "Writable number entity used to set the miner target power, for example hass-miner Power Limit.",
           "curve": "One line per measured point: target_w, actual_wall_w, hashrate_THs. Comments beginning with # are allowed.",
           "min_power_change": "Do not retune the miner unless the target moves by at least this many watts.",
           "startup_wait": "When Mining Request turns on, wait up to this many seconds for the miner power-limit entity to become available."
@@ -33,6 +33,27 @@
     },
     "abort": {
       "already_configured": "This miner power-limit entity is already configured."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Configure miner profile",
+        "description": "Update the measured power/hashrate profile and retuning behavior. Changes are applied after Submit and the integration reloads automatically.",
+        "data": {
+          "curve": "Measured efficiency curve",
+          "min_power_change": "Minimum power change before retuning",
+          "startup_wait": "Maximum startup wait"
+        },
+        "data_description": {
+          "curve": "Edit or add rows as: target_w, actual_wall_w, hashrate_THs.",
+          "min_power_change": "Minimum target change required before the optimizer retunes the miner.",
+          "startup_wait": "Maximum time to wait for the writable power-limit entity after an external automation powers the miner."
+        }
+      }
+    },
+    "error": {
+      "invalid_curve": "Invalid curve. Use one line per point: target_w, actual_wall_w, hashrate_THs"
     }
   }
 }

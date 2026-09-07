@@ -26,7 +26,9 @@ from .const import (
 )
 from .optimizer import (
     CurvePoint,
+    break_even_electricity_price,
     electricity_cost_per_hour,
+    efficiency_w_per_th,
     find_optimal_point,
     parse_curve,
     profit_per_hour,
@@ -46,7 +48,10 @@ class Metrics:
     optimal_power: float | None = None
     optimal_actual_power: float | None = None
     optimal_hashrate: float | None = None
+    optimal_efficiency: float | None = None
     optimal_profit: float | None = None
+    optimal_daily_profit: float | None = None
+    break_even_electricity_price: float | None = None
 
 
 class AsicProfitManager:
@@ -55,7 +60,7 @@ class AsicProfitManager:
     def __init__(self, hass: HomeAssistant, entry) -> None:
         self.hass = hass
         self.entry = entry
-        self.config = entry.data
+        self.config = {**entry.data, **entry.options}
         self.name: str = self.config[CONF_NAME]
         self.curve: list[CurvePoint] = parse_curve(self.config[CONF_CURVE])
 
@@ -119,7 +124,11 @@ class AsicProfitManager:
         hashrate = self._float_state(self.config[CONF_HASHRATE_SENSOR])
         power = self._float_state(self.config[CONF_POWER_SENSOR])
 
-        # Live/current values legitimately become zero while the miner is off.
+        # When wall power is zero, the miner is physically off. hass-miner may
+        # report hashrate as unavailable in that state; economically it is zero.
+        if power is not None and power <= 1.0 and hashrate is None:
+            hashrate = 0.0
+
         if hashprice is not None and hashrate is not None:
             result.current_revenue = revenue_per_hour(hashrate, hashprice)
 
@@ -141,14 +150,21 @@ class AsicProfitManager:
                 electricity,
             )
 
-        # Optimal values depend ONLY on the stored curve + economic inputs.
-        # They therefore keep working while the ASIC itself is powered off.
+        # Optimal values depend only on the stored curve and market inputs, so
+        # they remain available while the miner itself is powered off.
         if hashprice is not None and electricity is not None:
             best = find_optimal_point(self.curve, hashprice, electricity)
             result.optimal_power = best.target_w
             result.optimal_actual_power = best.actual_w
             result.optimal_hashrate = best.hashrate_ths
+            result.optimal_efficiency = efficiency_w_per_th(
+                best.actual_w, best.hashrate_ths
+            )
             result.optimal_profit = best.profit_per_hour
+            result.optimal_daily_profit = best.profit_per_hour * 24.0
+            result.break_even_electricity_price = break_even_electricity_price(
+                self.curve, hashprice
+            )
 
         return result
 
@@ -179,11 +195,11 @@ class AsicProfitManager:
             self._cancel_power_task()
             return
 
-        best = self.calculate()
-        if best.optimal_power is None:
+        metrics = self.calculate()
+        if metrics.optimal_power is None:
             return
 
-        self._schedule_power_target(best.optimal_power)
+        self._schedule_power_target(metrics.optimal_power)
 
     def _cancel_power_task(self) -> None:
         if self._power_task and not self._power_task.done():

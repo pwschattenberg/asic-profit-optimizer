@@ -1,17 +1,12 @@
 # ASIC Profit Optimizer
 
-A Home Assistant custom integration for optimizing variable-power ASIC miners
-against a live hashprice and electricity price.
+A Home Assistant custom integration for optimizing variable-power ASIC miners against a live hashprice and electricity price.
 
-**This integration contains no heating logic.**
+**ASIC Profit Optimizer is mining-only.** It contains no heating logic and does not switch mains power on or off.
 
-It deliberately exposes a mining-only request signal so that heating, solar,
-battery dispatch, load shedding, or other systems can remain completely
-independent.
+## What it does
 
-## Core model
-
-For each measured miner operating point:
+For every measured operating point in a miner profile:
 
 ```text
 profit €/h =
@@ -19,34 +14,49 @@ profit €/h =
     - actual_wall_w / 1000 × electricity_€/kWh
 ```
 
-The integration selects the measured operating point with the highest expected
-profit.
+The integration selects the measured point with the highest expected profit. Negative electricity prices are supported naturally.
 
-Negative electricity prices work naturally.
+The optimizer continues calculating while the miner is powered off because optimal profitability uses the stored power/hashrate profile rather than live miner consumption.
+
+## v0.2.0 highlights
+
+- Native Home Assistant device per configured miner
+- **Configure** button for editing the measured power/hashrate profile after setup
+- Automatic integration reload after configuration changes
+- Current and optimal profitability sensors
+- Break-even electricity price
+- True wall-power efficiency at the optimal point
+- Daily optimal profit projection
+- Mining Request binary sensor for external power-control automations
+- Automatic power-target setting through an existing writable `number` entity such as hass-miner Power Limit
+- Multiple miners are supported by adding another ASIC Profit Optimizer config entry
 
 ## Inputs
 
-Each configured miner needs existing Home Assistant entities for:
+Each miner needs existing Home Assistant entities for:
 
-- Hashprice sensor, e.g. `sensor.bch_hashprice` in `€/TH/day`
+- Hashprice sensor, for example `sensor.bch_hashprice` in `€/TH/day`
 - Electricity price sensor in `€/kWh`
 - Live hashrate sensor in `TH/s`
 - Live power sensor in `W`
 - Writable miner power-limit `number` entity
-- A measured power/hashrate curve
+- A measured power/hashrate profile
 
-Example curve:
+A smart plug with power metering is preferred for the live power sensor because it measures true wall consumption.
+
+Example profile:
 
 ```text
 # target_w, actual_wall_w, hashrate_THs
-600,597.5,7.157
-800,801.2,9.31
-1000,1005.6,10.82
-1200,1211.4,12.02
+600,630.1,7.544
+800,840.0,9.20
+1000,1045.0,10.75
+1200,1245.0,11.90
 ```
 
-`actual_wall_w` is used for the cost calculation; `target_w` is what gets sent
-to the miner.
+The values above are only an example. Measure each miner individually.
+
+`target_w` is the value sent to the miner. `actual_wall_w` is used for electricity cost.
 
 ## Entities created per miner
 
@@ -58,91 +68,72 @@ Sensors:
 - Optimal Power
 - Optimal Actual Power
 - Optimal Hashrate
+- Optimal Efficiency
 - Optimal Profit
+- Optimal Daily Profit
+- Break-even Electricity Price
 
 Binary sensors:
 
-- **Profitable** — ON whenever the best measured operating point has profit > 0
-- **Mining Request** — ON when Auto Optimize is enabled AND mining is profitable
+- **Profitable** — ON whenever the best measured operating point has profit greater than zero
+- **Mining Request** — ON when Auto Optimize is enabled and mining is profitable
 
-Switch:
+Control:
 
-- **Auto Optimize** — master enable for the mining request and automatic power
-  target setting
+- **Auto Optimize** — enables Mining Request and automatic optimal power-target updates
 
-## Important architecture
+## Power-control architecture
 
-ASIC Profit Optimizer **does not switch mains power on or off**.
+ASIC Profit Optimizer deliberately does **not** control the physical smart plug or mains power.
 
-That is intentional.
-
-Your Home Assistant automations can use:
+Use the generated Mining Request entity as an input to your own Home Assistant power-control automation:
 
 ```text
 binary_sensor.<miner>_mining_request
 ```
 
-as one independent request signal.
+When Mining Request turns ON, an external automation can power the miner. ASIC Profit Optimizer waits for the configured writable power-limit entity to become available and then sends the calculated optimal wattage.
 
-For example, if you separately use the ASIC as a heater, your own arbitration
-automation can implement:
+When Mining Request turns OFF, ASIC Profit Optimizer stops requesting mining and does not switch any physical load itself.
 
-```text
-mining_request OR heating_request -> physical smart plug ON
-neither request                    -> physical smart plug OFF
-```
+## Editing a miner profile
 
-The plugin does not know that a heating system exists.
+After adding a miner:
 
-When Mining Request becomes ON, the plugin waits for the configured miner
-power-limit entity to become available. This allows an external automation to
-power the ASIC. Once the entity appears, the plugin sets the calculated optimal
-power target.
+1. Go to **Settings → Devices & services**.
+2. Open **ASIC Profit Optimizer**.
+3. Select **Configure** on the miner entry.
+4. Edit the measured power/hashrate profile, minimum retune threshold, or startup wait.
+5. Press **Submit**.
 
-When Mining Request becomes OFF, the plugin does not power anything off.
+The integration reloads automatically and recalculates the optimum from the new profile. You do not need to delete and recreate the miner.
 
-## Safe startup behavior
+## Safe behavior
 
-Auto Optimize defaults to OFF on first installation.
+- Auto Optimize defaults to OFF on first installation.
+- If hashprice or electricity price is unavailable, no mining request is generated and no power target is changed.
+- The optimizer only selects target wattages explicitly present in the measured profile.
+- The minimum retune threshold reduces unnecessary miner reconfiguration.
+- If the miner is off and its hashrate entity becomes unavailable, a zero wall-power reading is treated as zero current hashrate for current-profit reporting only. Optimal-profit calculations remain profile-based.
 
-If economic inputs are unavailable, no mining request is generated and no power
-target is changed.
+## Installation with HACS
 
-The optimizer only selects target wattages explicitly included in the measured
-curve.
-
-## Installation for testing
-
-1. Copy:
-   `custom_components/asic_profit_optimizer`
-   into:
-   `/config/custom_components/asic_profit_optimizer`
-2. Restart Home Assistant.
-3. Go to **Settings → Devices & services → Add integration**.
-4. Search for **ASIC Profit Optimizer**.
-5. Add one entry for your S9i.
-6. Verify all calculated values while **Auto Optimize is OFF**.
-7. Enable Auto Optimize when ready.
-
-Add another integration entry for the S9 or S19j Pro instead of duplicating
-template sensors and profitability automations.
-
-## S9i development point
-
-The first measured S9i operating point from the development system is:
+Add this repository to HACS as a custom **Integration** repository:
 
 ```text
-600,597.5,7.157
+https://github.com/pwschattenberg/asic-profit-optimizer
 ```
 
-Replace/add points after each Braiins target has stabilized.
+Then download ASIC Profit Optimizer, restart Home Assistant, and add it from **Settings → Devices & services → Add integration**.
 
-## HACS publication
+## Multiple miners
 
-The directory structure is suitable for turning into a HACS repository, but
-before publishing:
+Add one config entry per miner. Each miner gets its own profile, calculated entities, Mining Request, and Auto Optimize control.
 
-- replace `REPLACE_ME` URLs in `manifest.json`
-- publish the code to a GitHub repository
-- add repository/brand metadata as required
-- run Home Assistant/HACS validation
+This avoids duplicating template helpers and profitability automations for S9, S9i, S19, S19j Pro, or other miners that expose compatible Home Assistant entities.
+
+## Roadmap
+
+The next architectural step is farm-level aggregation and a dedicated Home Assistant dashboard/card showing total hashrate, total power, aggregate profit, active/profitable miners, and per-miner optimal targets.
+
+Longer term, the profitability engine can remain independent from the miner transport layer so adapters other than hass-miner can be supported without changing the economics engine.
