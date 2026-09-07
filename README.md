@@ -167,8 +167,14 @@ ASIC Profit Optimizer
 
 The profitability engine remains separate from the miner transport layer. A future direct pyasic adapter can therefore be added without changing the economics engine.
 
+## Support the project
+
+If ASIC Profit Optimizer is useful to you and you'd like to support continued development, donations are welcome but entirely optional. Donations do not unlock features or affect support priority.
+
+- **Bitcoin (BTC):** `329tN2TMuebposHNf6f25QwcjAwTnVkjjs`
+- **Bitcoin Cash (BCH):** `1A7ZpJ15HB8F1PQumpXBNkhUSRhUtSKHsG`
+- **Buy Me a Coffee:** https://buymeacoffee.com/pschattenberg
+
 ## Roadmap
 
 Planned follow-on work includes native farm-level Home Assistant entities for automations/history, improved profile editing/calibration, richer farm controls, and an optional direct miner transport layer.
-
-A donation section for project support may also be added later.
