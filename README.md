@@ -9,14 +9,20 @@ A Home Assistant custom integration for optimizing variable-power ASIC miners ag
 For every measured operating point in a miner profile:
 
 ```text
-profit €/h =
-    hashrate_THs × hashprice_€/TH/day / 24
-    - actual_wall_w / 1000 × electricity_€/kWh
+profit currency/h =
+    hashrate_THs × hashprice_currency/TH/day / 24
+    - actual_wall_w / 1000 × electricity_currency/kWh
 ```
 
 The integration selects the measured point with the highest expected profit. Negative electricity prices are supported naturally.
 
 The optimizer continues calculating while the miner is powered off because optimal profitability uses the stored power/hashrate profile rather than live miner consumption.
+
+## Currency
+
+ASIC Profit Optimizer follows the currency configured in **Home Assistant → Settings → System → General**. The dashboard formats values using that currency and the calculated sensor units use the Home Assistant currency code, for example `EUR/h`, `USD/day`, or `GBP/kWh`.
+
+The integration does not perform foreign-exchange conversion. The configured hashprice and electricity-price sensors must therefore represent values in the same currency as the Home Assistant currency setting. If the Home Assistant currency is changed, reload or restart the integration so entity units are recreated with the new currency.
 
 ## Farm dashboard
 
@@ -37,7 +43,7 @@ The farm dashboard aggregates every configured ASIC Profit Optimizer miner and s
 
 The dashboard also lets an administrator toggle **Auto Optimize** for each miner.
 
-Farm optimal profit assumes miners whose best measured operating point is unprofitable remain off, so a negative per-miner best-point profit contributes zero to the farm optimum.
+Farm optimal profit assumes miners whose best measured operating point is unprofitable remain off, so a negative per-miner best-point profit contributes zero to the farm optimum. A farm optimum of zero therefore means the most profitable mining action is to leave all currently unprofitable miners off; it is not the sum of their negative best-point profits.
 
 The panel uses Home Assistant's authenticated WebSocket API and does not expose a separate web server.
 
@@ -45,8 +51,8 @@ The panel uses Home Assistant's authenticated WebSocket API and does not expose 
 
 Each miner needs existing Home Assistant entities for:
 
-- Hashprice sensor, for example `sensor.bch_hashprice` in `€/TH/day`
-- Electricity price sensor in `€/kWh`
+- Hashprice sensor, for example `sensor.bch_hashprice` in `currency/TH/day`
+- Electricity price sensor in `currency/kWh`
 - Live hashrate sensor in `TH/s`
 - Live power sensor in `W`
 - Writable miner power-limit `number` entity
@@ -182,4 +188,4 @@ If ASIC Profit Optimizer is useful to you and you'd like to support continued de
 
 ## Roadmap
 
-Planned follow-on work includes native farm-level Home Assistant entities for automations/history, improved profile editing/calibration, richer farm controls, and an optional direct miner transport layer.
+Planned follow-on work includes native farm-level Home Assistant entities for automations/history, improved profile editing/calibration, richer farm controls, more meaningful per-entity icons, and an optional direct miner transport layer.
