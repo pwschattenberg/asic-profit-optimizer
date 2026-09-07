@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.3.0
+
+- Add an admin-only **ASIC Profit** farm dashboard to the Home Assistant left sidebar.
+- Aggregate all configured optimizer entries into total live hashrate, live wall power, current profit, optimal mining profit, active miners, profitable miners, and Mining Request counts.
+- Add per-miner dashboard cards with live telemetry, optimal target, optimal profit, break-even electricity price, profile size, and status.
+- Allow Auto Optimize to be toggled per miner directly from the farm dashboard.
+- Add an authenticated Home Assistant WebSocket endpoint for farm snapshots.
+- Serve the dashboard frontend from a versioned integration static path.
+- Treat negative per-miner optimal profit as OFF when calculating the farm-wide optimal mining profit.
+- Add farm aggregation tests.
+- Keep the dashboard and optimizer mining-only; no heating logic or physical mains switching is added.
+
 ## 0.2.2
 
 - Add **Miner name** to the Configure flow so an existing optimizer entry can be renamed without deleting and recreating it.
