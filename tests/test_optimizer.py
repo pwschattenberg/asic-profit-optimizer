@@ -44,7 +44,7 @@ def test_optimizer_uses_actual_wall_power_for_cost() -> None:
     best = optimizer.find_optimal_point(
         curve,
         hashprice_per_th_day=0.12,
-        price_per_kwh=0.02,
+        price_per_kwh=0.04,
     )
 
     assert best.target_w == 600
