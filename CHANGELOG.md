@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.3.5
+
+- Add a local Home Assistant brand icon for ASIC Profit Optimizer.
+- Include a standard-resolution icon and a high-resolution `@2x` variant.
+- Keep all optimizer calculations, dashboard behavior, power targeting, and arbitration behavior unchanged.
+
 ## 0.3.4
 
 - Give each calculated profitability sensor a distinct icon that better matches the metric it represents.
