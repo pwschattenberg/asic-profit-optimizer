@@ -43,6 +43,7 @@ class AsicProfitPanel extends HTMLElement {
     this._data = null;
     this._error = null;
     this._loading = false;
+    this._reloadPending = false;
     this._refreshTimer = null;
     this._debounceTimer = null;
   }
@@ -92,7 +93,11 @@ class AsicProfitPanel extends HTMLElement {
   }
 
   async _load() {
-    if (!this._hass || this._loading) return;
+    if (!this._hass) return;
+    if (this._loading) {
+      this._reloadPending = true;
+      return;
+    }
 
     this._loading = true;
     try {
@@ -103,6 +108,10 @@ class AsicProfitPanel extends HTMLElement {
     } finally {
       this._loading = false;
       this._render();
+      if (this._reloadPending) {
+        this._reloadPending = false;
+        this._scheduleLoad(0);
+      }
     }
   }
 
