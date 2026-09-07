@@ -24,6 +24,9 @@ const money = (value, suffix = "") =>
     ? "—"
     : `${Number(value) >= 0 ? "+" : ""}€${number(value, 4)}${suffix}`;
 
+const profitClass = (value) =>
+  value === null || value === undefined ? "" : Number(value) >= 0 ? "positive" : "negative";
+
 class AsicProfitPanel extends HTMLElement {
   constructor() {
     super();
@@ -88,6 +91,7 @@ class AsicProfitPanel extends HTMLElement {
 
   async _toggleAuto(entityId, currentlyOn) {
     if (!this._hass || !entityId) return;
+
     try {
       await this._hass.callService(
         "switch",
@@ -111,91 +115,62 @@ class AsicProfitPanel extends HTMLElement {
     `;
   }
 
-  _minerCard(miner) {
-    const autoEntity = miner.entities?.auto_optimize;
-    const currentProfitClass =
-      miner.current_profit_per_hour === null
-        ? ""
-        : miner.current_profit_per_hour >= 0
-          ? "positive"
-          : "negative";
-    const optimalProfitClass =
-      miner.optimal_profit_per_hour === null
-        ? ""
-        : miner.optimal_profit_per_hour >= 0
-          ? "positive"
-          : "negative";
+  _status(miner) {
+    const active = miner.active
+      ? '<span class="status active">● Active</span>'
+      : '<span class="status">○ Off</span>';
 
+    const profitable = miner.profitable
+      ? '<span class="status profitable">Profitable</span>'
+      : '<span class="status">Not profitable</span>';
+
+    return `<div class="status-stack">${active}${profitable}</div>`;
+  }
+
+  _request(miner) {
+    return miner.mining_request
+      ? '<span class="request on">ON</span>'
+      : '<span class="request">OFF</span>';
+  }
+
+  _minerRow(miner) {
+    const autoEntity = miner.entities?.auto_optimize;
     return `
-      <article class="miner-card">
-        <header class="miner-header">
-          <div>
-            <div class="miner-name">${esc(miner.name)}</div>
-            <div class="chips">
-              <span class="chip ${miner.active ? "on" : ""}">
-                ${miner.active ? "● Active" : "○ Off"}
-              </span>
-              <span class="chip ${miner.profitable ? "good" : ""}">
-                ${miner.profitable ? "Profitable" : "Not profitable"}
-              </span>
-              ${
-                miner.mining_request
-                  ? '<span class="chip request">Mining requested</span>'
-                  : ""
-              }
-            </div>
-          </div>
+      <tr>
+        <td class="miner-cell">
+          <strong>${esc(miner.name)}</strong>
+          <span>${number(miner.profile_points, 0)} profile points</span>
+        </td>
+        <td>${this._status(miner)}</td>
+        <td class="numeric">${number(miner.hashrate_ths, 3)} <span class="unit">TH/s</span></td>
+        <td class="numeric">${number(miner.power_w, 1)} <span class="unit">W</span></td>
+        <td class="numeric ${profitClass(miner.current_profit_per_hour)}">
+          ${money(miner.current_profit_per_hour, "/h")}
+        </td>
+        <td class="numeric">
+          ${number(miner.optimal_power_w, 0)} <span class="unit">W</span>
+        </td>
+        <td class="numeric ${profitClass(miner.optimal_profit_per_hour)}">
+          ${money(miner.optimal_profit_per_hour, "/h")}
+        </td>
+        <td class="numeric ${profitClass(miner.optimal_profit_per_day)}">
+          ${money(miner.optimal_profit_per_day, "/day")}
+        </td>
+        <td class="numeric">
+          €${number(miner.break_even_electricity_price, 4)}<span class="unit">/kWh</span>
+        </td>
+        <td class="center">${this._request(miner)}</td>
+        <td class="center">
           <button
             class="auto-button ${miner.auto_optimize ? "enabled" : ""}"
             data-auto-entity="${esc(autoEntity || "")}"
             data-auto-state="${miner.auto_optimize ? "on" : "off"}"
             ${autoEntity ? "" : "disabled"}
           >
-            Auto ${miner.auto_optimize ? "ON" : "OFF"}
+            ${miner.auto_optimize ? "ON" : "OFF"}
           </button>
-        </header>
-
-        <div class="metrics">
-          <div class="metric">
-            <span>Hashrate</span>
-            <strong>${number(miner.hashrate_ths, 3)} TH/s</strong>
-          </div>
-          <div class="metric">
-            <span>Wall power</span>
-            <strong>${number(miner.power_w, 1)} W</strong>
-          </div>
-          <div class="metric">
-            <span>Current profit</span>
-            <strong class="${currentProfitClass}">
-              ${money(miner.current_profit_per_hour, "/h")}
-            </strong>
-          </div>
-          <div class="metric">
-            <span>Optimal target</span>
-            <strong>${number(miner.optimal_power_w, 0)} W</strong>
-          </div>
-          <div class="metric">
-            <span>Optimal profit</span>
-            <strong class="${optimalProfitClass}">
-              ${money(miner.optimal_profit_per_hour, "/h")}
-            </strong>
-          </div>
-          <div class="metric">
-            <span>Optimal/day</span>
-            <strong class="${optimalProfitClass}">
-              ${money(miner.optimal_profit_per_day, "/day")}
-            </strong>
-          </div>
-          <div class="metric">
-            <span>Break-even</span>
-            <strong>€${number(miner.break_even_electricity_price, 4)}/kWh</strong>
-          </div>
-          <div class="metric">
-            <span>Profile</span>
-            <strong>${number(miner.profile_points, 0)} points</strong>
-          </div>
-        </div>
-      </article>
+        </td>
+      </tr>
     `;
   }
 
@@ -226,7 +201,7 @@ class AsicProfitPanel extends HTMLElement {
         * { box-sizing: border-box; }
 
         .page {
-          max-width: 1500px;
+          max-width: 1700px;
           margin: 0 auto;
           padding: 24px;
         }
@@ -255,7 +230,7 @@ class AsicProfitPanel extends HTMLElement {
           font: inherit;
           border: 1px solid var(--divider-color);
           border-radius: 10px;
-          padding: 9px 13px;
+          padding: 8px 12px;
           cursor: pointer;
           background: var(--card-background-color);
           color: var(--primary-text-color);
@@ -264,9 +239,7 @@ class AsicProfitPanel extends HTMLElement {
         button:hover { filter: brightness(0.98); }
         button:disabled { opacity: 0.45; cursor: default; }
 
-        .settings-button {
-          white-space: nowrap;
-        }
+        .settings-button { white-space: nowrap; }
 
         .error {
           margin-bottom: 16px;
@@ -300,7 +273,7 @@ class AsicProfitPanel extends HTMLElement {
         }
 
         .summary-card,
-        .miner-card {
+        .table-shell {
           background: var(--card-background-color);
           border: 1px solid var(--divider-color);
           border-radius: 14px;
@@ -346,87 +319,118 @@ class AsicProfitPanel extends HTMLElement {
           font-weight: 600;
         }
 
-        .miners {
-          display: grid;
-          grid-template-columns: repeat(auto-fit, minmax(360px, 1fr));
-          gap: 14px;
+        .table-shell {
+          overflow-x: auto;
         }
 
-        .miner-card {
-          padding: 16px;
+        table {
+          width: 100%;
+          min-width: 1280px;
+          border-collapse: collapse;
+          font-size: 13px;
         }
 
-        .miner-header {
-          display: flex;
-          justify-content: space-between;
-          align-items: flex-start;
-          gap: 12px;
-          padding-bottom: 14px;
+        thead th {
+          position: sticky;
+          top: 0;
+          z-index: 1;
+          padding: 12px 11px;
+          text-align: left;
+          white-space: nowrap;
+          color: var(--secondary-text-color);
+          background: var(--card-background-color);
+          border-bottom: 1px solid var(--divider-color);
+          font-weight: 600;
+        }
+
+        tbody td,
+        tfoot td {
+          padding: 12px 11px;
+          border-bottom: 1px solid var(--divider-color);
+          vertical-align: middle;
+          white-space: nowrap;
+        }
+
+        tbody tr:hover {
+          background: var(--secondary-background-color);
+        }
+
+        tbody tr:last-child td {
           border-bottom: 1px solid var(--divider-color);
         }
 
-        .miner-name {
-          font-size: 18px;
+        tfoot td {
           font-weight: 600;
-          margin-bottom: 8px;
+          background: var(--secondary-background-color);
+          border-bottom: 0;
         }
 
-        .chips {
+        .miner-cell {
+          min-width: 170px;
+        }
+
+        .miner-cell strong {
+          display: block;
+          font-size: 14px;
+        }
+
+        .miner-cell span {
+          display: block;
+          margin-top: 3px;
+          color: var(--secondary-text-color);
+          font-size: 11px;
+        }
+
+        .status-stack {
           display: flex;
-          flex-wrap: wrap;
-          gap: 6px;
+          flex-direction: column;
+          align-items: flex-start;
+          gap: 4px;
         }
 
-        .chip {
+        .status,
+        .request {
           display: inline-block;
           border-radius: 999px;
-          padding: 4px 8px;
+          padding: 3px 7px;
           font-size: 11px;
           background: var(--secondary-background-color);
           color: var(--secondary-text-color);
         }
 
-        .chip.on {
+        .status.active {
           color: var(--primary-text-color);
         }
 
-        .chip.good,
-        .chip.request {
+        .status.profitable,
+        .request.on {
           color: var(--success-color);
+        }
+
+        .numeric {
+          text-align: right;
+          font-variant-numeric: tabular-nums;
+        }
+
+        .center { text-align: center; }
+
+        .unit {
+          color: var(--secondary-text-color);
+          font-size: 11px;
+        }
+
+        .positive { color: var(--success-color); }
+        .negative { color: var(--error-color); }
+
+        .auto-button {
+          min-width: 56px;
+          padding: 6px 9px;
         }
 
         .auto-button.enabled {
           border-color: var(--success-color);
           color: var(--success-color);
         }
-
-        .metrics {
-          display: grid;
-          grid-template-columns: repeat(2, minmax(0, 1fr));
-          gap: 0 18px;
-          padding-top: 8px;
-        }
-
-        .metric {
-          display: flex;
-          justify-content: space-between;
-          gap: 10px;
-          padding: 9px 0;
-          border-bottom: 1px solid var(--divider-color);
-          font-size: 13px;
-        }
-
-        .metric span {
-          color: var(--secondary-text-color);
-        }
-
-        .metric strong {
-          font-weight: 600;
-          text-align: right;
-        }
-
-        .positive { color: var(--success-color); }
-        .negative { color: var(--error-color); }
 
         .empty {
           padding: 32px;
@@ -449,8 +453,6 @@ class AsicProfitPanel extends HTMLElement {
           .summary-grid {
             grid-template-columns: repeat(2, minmax(130px, 1fr));
           }
-          .miners { grid-template-columns: 1fr; }
-          .metrics { grid-template-columns: 1fr; }
         }
 
         @media (max-width: 430px) {
@@ -472,11 +474,7 @@ class AsicProfitPanel extends HTMLElement {
           </button>
         </div>
 
-        ${
-          this._error
-            ? `<div class="error">${esc(this._error)}</div>`
-            : ""
-        }
+        ${this._error ? `<div class="error">${esc(this._error)}</div>` : ""}
 
         ${
           shared.hashprice || shared.electricity
@@ -541,9 +539,51 @@ class AsicProfitPanel extends HTMLElement {
 
         ${
           miners.length
-            ? `<section class="miners">${miners
-                .map((miner) => this._minerCard(miner))
-                .join("")}</section>`
+            ? `
+              <section class="table-shell">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Miner</th>
+                      <th>Status</th>
+                      <th class="numeric">Hashrate</th>
+                      <th class="numeric">Wall power</th>
+                      <th class="numeric">Current profit</th>
+                      <th class="numeric">Optimal target</th>
+                      <th class="numeric">Optimal profit</th>
+                      <th class="numeric">Optimal / day</th>
+                      <th class="numeric">Break-even</th>
+                      <th class="center">Mining request</th>
+                      <th class="center">Auto optimize</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    ${miners.map((miner) => this._minerRow(miner)).join("")}
+                  </tbody>
+                  ${
+                    farm
+                      ? `
+                        <tfoot>
+                          <tr>
+                            <td>Farm total</td>
+                            <td>${farm.active_miners} active</td>
+                            <td class="numeric">${number(farm.total_hashrate_ths, 3)} <span class="unit">TH/s</span></td>
+                            <td class="numeric">${number(farm.total_power_w, 1)} <span class="unit">W</span></td>
+                            <td class="numeric ${profitClass(farm.current_profit_per_hour)}">${money(farm.current_profit_per_hour, "/h")}</td>
+                            <td class="numeric">—</td>
+                            <td class="numeric ${profitClass(farm.optimal_profit_per_hour)}">${money(farm.optimal_profit_per_hour, "/h")}</td>
+                            <td class="numeric ${profitClass(farm.optimal_profit_per_day)}">${money(farm.optimal_profit_per_day, "/day")}</td>
+                            <td class="numeric">—</td>
+                            <td class="center">${farm.mining_requested_miners}</td>
+                            <td class="center">${farm.auto_optimize_miners}</td>
+                          </tr>
+                        </tfoot>
+                      `
+                      : ""
+                  }
+                </table>
+              </section>
+            `
             : `
               <div class="empty">
                 No ASIC Profit Optimizer miners are configured yet.
