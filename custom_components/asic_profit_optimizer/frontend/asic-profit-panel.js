@@ -60,6 +60,7 @@ class AsicProfitPanel extends HTMLElement {
     this.attachShadow({ mode: "open" });
     this._hass = null;
     this._panel = null;
+    this._narrow = false;
     this._data = null;
     this._error = null;
     this._loading = false;
@@ -79,6 +80,17 @@ class AsicProfitPanel extends HTMLElement {
 
   set panel(value) {
     this._panel = value;
+  }
+
+  set narrow(value) {
+    const narrow = Boolean(value);
+    if (this._narrow === narrow) return;
+    this._narrow = narrow;
+    this._render();
+  }
+
+  get narrow() {
+    return this._narrow;
   }
 
   connectedCallback() {
@@ -138,6 +150,16 @@ class AsicProfitPanel extends HTMLElement {
   _navigate(path) {
     history.pushState(null, "", path);
     window.dispatchEvent(new CustomEvent("location-changed"));
+  }
+
+  _toggleMenu() {
+    this.dispatchEvent(
+      new CustomEvent("hass-toggle-menu", {
+        detail: { open: true },
+        bubbles: true,
+        composed: true,
+      })
+    );
   }
 
   async _toggleAuto(entityId, currentlyOn) {
@@ -330,6 +352,8 @@ class AsicProfitPanel extends HTMLElement {
   _render() {
     if (!this.shadowRoot) return;
 
+    const tableScrollLeft =
+      this.shadowRoot.querySelector(".table-shell")?.scrollLeft ?? 0;
     const data = this._data;
     const farm = data?.farm;
     const miners = data?.miners || [];
@@ -363,6 +387,17 @@ class AsicProfitPanel extends HTMLElement {
           margin-bottom: 22px;
         }
 
+        .title-block {
+          display: flex;
+          align-items: flex-start;
+          gap: 8px;
+          min-width: 0;
+        }
+
+        .title-copy {
+          min-width: 0;
+        }
+
         h1 {
           font-size: 28px;
           line-height: 1.2;
@@ -387,6 +422,27 @@ class AsicProfitPanel extends HTMLElement {
 
         button:hover { filter: brightness(0.98); }
         button:disabled { opacity: 0.45; cursor: default; }
+
+        .menu-button {
+          width: 40px;
+          height: 40px;
+          flex: 0 0 40px;
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          padding: 8px;
+          margin: -5px 0 0 -8px;
+          border: 0;
+          border-radius: 50%;
+          background: transparent;
+          color: var(--primary-text-color);
+        }
+
+        .menu-button svg {
+          width: 24px;
+          height: 24px;
+          fill: currentColor;
+        }
 
         .settings-button { white-space: nowrap; }
 
@@ -474,6 +530,10 @@ class AsicProfitPanel extends HTMLElement {
 
         .table-shell {
           overflow-x: auto;
+          -webkit-overflow-scrolling: touch;
+          overscroll-behavior-inline: contain;
+          touch-action: pan-x pan-y;
+          scrollbar-gutter: stable;
         }
 
         table {
@@ -618,20 +678,53 @@ class AsicProfitPanel extends HTMLElement {
           .summary-grid {
             grid-template-columns: repeat(2, minmax(130px, 1fr));
           }
+
+          thead th:first-child,
+          tbody td:first-child,
+          tfoot td:first-child {
+            position: sticky;
+            left: 0;
+            z-index: 2;
+            background: var(--card-background-color);
+            box-shadow: 1px 0 0 var(--divider-color);
+          }
+
+          thead th:first-child {
+            z-index: 3;
+          }
+
+          tfoot td:first-child {
+            background: var(--secondary-background-color);
+          }
         }
 
         @media (max-width: 430px) {
           .summary-grid { grid-template-columns: 1fr; }
-          .topbar { flex-direction: column; }
+          .topbar {
+            flex-direction: column;
+            align-items: stretch;
+          }
+          .settings-button { align-self: center; }
         }
       </style>
 
       <main class="page">
         <div class="topbar">
-          <div>
-            <h1>ASIC Profit</h1>
-            <div class="subtitle">
-              Live mining economics and optimization across all configured miners
+          <div class="title-block">
+            ${
+              this._narrow
+                ? `<button class="menu-button" id="sidebar-menu" aria-label="Open sidebar" title="Open sidebar">
+                     <svg viewBox="0 0 24 24" aria-hidden="true">
+                       <path d="M3 6h18v2H3V6m0 5h18v2H3v-2m0 5h18v2H3v-2" />
+                     </svg>
+                   </button>`
+                : ""
+            }
+            <div class="title-copy">
+              <h1>ASIC Profit</h1>
+              <div class="subtitle">
+                Live mining economics and optimization across all configured miners
+              </div>
             </div>
           </div>
           <button class="settings-button" id="integration-settings">
@@ -798,6 +891,13 @@ class AsicProfitPanel extends HTMLElement {
         }
       </main>
     `;
+
+    const tableShell = this.shadowRoot.querySelector(".table-shell");
+    if (tableShell) tableShell.scrollLeft = tableScrollLeft;
+
+    this.shadowRoot
+      .getElementById("sidebar-menu")
+      ?.addEventListener("click", () => this._toggleMenu());
 
     this.shadowRoot
       .getElementById("integration-settings")
