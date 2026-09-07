@@ -1,9 +1,9 @@
 {
   "domain": "asic_profit_optimizer",
   "name": "ASIC Profit Optimizer",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "config_flow": true,
-  "integration_type": "helper",
+  "integration_type": "device",
   "iot_class": "calculated",
   "documentation": "https://github.com/pwschattenberg/asic-profit-optimizer",
   "issue_tracker": "https://github.com/pwschattenberg/asic-profit-optimizer/issues",
