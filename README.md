@@ -21,7 +21,7 @@ The optimizer continues calculating while the miner is powered off because optim
 ## v0.2.0 highlights
 
 - Native Home Assistant device per configured miner
-- **Configure** button for editing miner mappings and the measured power/hashrate profile after setup
+- **Configure** button for editing the measured power/hashrate profile after setup
 - Automatic integration reload after configuration changes
 - Current and optimal profitability sensors
 - Break-even electricity price
@@ -103,7 +103,7 @@ After adding a miner:
 1. Go to **Settings → Devices & services**.
 2. Open **ASIC Profit Optimizer**.
 3. Select **Configure** on the miner entry.
-4. Edit the measured profile or entity mappings.
+4. Edit the measured power/hashrate profile, minimum retune threshold, or startup wait.
 5. Press **Submit**.
 
 The integration reloads automatically and recalculates the optimum from the new profile. You do not need to delete and recreate the miner.
