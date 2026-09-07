@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.3.5
+
+- Add a local Home Assistant brand icon and matching logo for ASIC Profit Optimizer.
+- Store the branding under the integration's local `brand/` directory for Home Assistant 2026.3 and newer.
+- Keep all optimizer calculations, dashboard behavior, power targeting, and arbitration behavior unchanged.
+
 ## 0.3.4
 
 - Give each calculated profitability sensor a distinct icon that better matches the metric it represents.
