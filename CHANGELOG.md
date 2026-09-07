@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.3.6
+
+- Add a mobile sidebar menu button to the ASIC Profit custom panel.
+- Preserve the miner table's horizontal scroll position across live dashboard refreshes.
+- Improve touch scrolling on the miner table and keep the Miner column visible while scrolling on narrow screens.
+- Keep optimizer calculations, power targeting, Mining Request behavior, and external power arbitration unchanged.
+
 ## 0.3.5
 
 - Add a local Home Assistant brand icon and matching logo for ASIC Profit Optimizer.
