@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.3.7
+
+- Replace the horizontally scrolling miner table with card-style miner rows on narrow displays.
+- Keep the full comparison table on wider desktop and tablet layouts.
+- Show each miner's status, live telemetry, profitability, optimal action, break-even price, Mining Request, and Auto Optimize control without horizontal swiping on phones.
+- Keep live dashboard updates reactive without moving the user's mobile layout position.
+- Keep optimizer calculations, power targeting, Mining Request behavior, and external power arbitration unchanged.
+
 ## 0.3.6
 
 - Add a mobile sidebar menu button to the ASIC Profit custom panel.
