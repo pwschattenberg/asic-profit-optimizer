@@ -82,6 +82,24 @@ def profit_per_hour(
     )
 
 
+def efficiency_w_per_th(actual_w: float, hashrate_ths: float) -> float:
+    """Return true wall-power efficiency in W/TH."""
+    if hashrate_ths <= 0:
+        raise ValueError("Hashrate must be greater than zero")
+    return actual_w / hashrate_ths
+
+
+def break_even_electricity_price(
+    curve: list[CurvePoint], hashprice_per_th_day: float
+) -> float:
+    """Highest electricity price at which any measured point can break even."""
+    return max(
+        revenue_per_hour(point.hashrate_ths, hashprice_per_th_day)
+        / (point.actual_w / 1000.0)
+        for point in curve
+    )
+
+
 def find_optimal_point(
     curve: list[CurvePoint],
     hashprice_per_th_day: float,
