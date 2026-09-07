@@ -2,8 +2,8 @@
 
 ## 0.3.5
 
-- Add a local Home Assistant brand icon for ASIC Profit Optimizer.
-- Include a standard-resolution icon and a high-resolution `@2x` variant.
+- Add a local Home Assistant brand icon and matching logo for ASIC Profit Optimizer.
+- Store the branding under the integration's local `brand/` directory for Home Assistant 2026.3 and newer.
 - Keep all optimizer calculations, dashboard behavior, power targeting, and arbitration behavior unchanged.
 
 ## 0.3.4
