@@ -8,6 +8,7 @@ from homeassistant.core import HomeAssistant
 
 from .const import DOMAIN
 from .manager import AsicProfitManager
+from .panel import async_setup_dashboard
 
 PLATFORMS = [
     Platform.SENSOR,
@@ -23,6 +24,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     manager = AsicProfitManager(hass, entry)
     hass.data[DOMAIN][entry.entry_id] = manager
 
+    await async_setup_dashboard(hass)
     await manager.async_start()
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
     return True

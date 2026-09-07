@@ -18,18 +18,28 @@ The integration selects the measured point with the highest expected profit. Neg
 
 The optimizer continues calculating while the miner is powered off because optimal profitability uses the stored power/hashrate profile rather than live miner consumption.
 
-## v0.2.0 highlights
+## v0.3.0 farm dashboard
 
-- Native Home Assistant device per configured miner
-- **Configure** button for editing the measured power/hashrate profile after setup
-- Automatic integration reload after configuration changes
-- Current and optimal profitability sensors
-- Break-even electricity price
-- True wall-power efficiency at the optimal point
-- Daily optimal profit projection
-- Mining Request binary sensor for external power-control automations
-- Automatic power-target setting through an existing writable `number` entity such as hass-miner Power Limit
-- Multiple miners are supported by adding another ASIC Profit Optimizer config entry
+v0.3.0 adds an admin-only **ASIC Profit** panel directly to the Home Assistant left sidebar.
+
+The farm dashboard aggregates every configured ASIC Profit Optimizer miner and shows:
+
+- configured, active and profitable miner counts
+- total live hashrate
+- total live wall power
+- aggregate current profit
+- aggregate optimal mining profit per hour and per day
+- active Mining Request count
+- Auto Optimize status for each miner
+- live and optimal per-miner economics
+- break-even electricity price
+- number of measured profile points
+
+The dashboard also lets an administrator toggle **Auto Optimize** for each miner.
+
+Farm optimal profit assumes miners whose best measured operating point is unprofitable remain off, so a negative per-miner optimal profit contributes zero to the farm optimum.
+
+The panel uses Home Assistant's authenticated WebSocket API and does not expose a separate web server.
 
 ## Inputs
 
@@ -96,17 +106,21 @@ When Mining Request turns ON, an external automation can power the miner. ASIC P
 
 When Mining Request turns OFF, ASIC Profit Optimizer stops requesting mining and does not switch any physical load itself.
 
+This keeps mining economics independent from any other reason a user may choose to power an ASIC.
+
 ## Editing a miner profile
 
 After adding a miner:
 
 1. Go to **Settings → Devices & services**.
 2. Open **ASIC Profit Optimizer**.
-3. Select **Configure** on the miner entry.
-4. Edit the measured power/hashrate profile, minimum retune threshold, or startup wait.
+3. Select the gear beside the miner entry.
+4. Rename the miner or edit the measured power/hashrate profile, minimum retune threshold, or startup wait.
 5. Press **Submit**.
 
 The integration reloads automatically and recalculates the optimum from the new profile. You do not need to delete and recreate the miner.
+
+Each config-entry heading uses the configured miner name, so multiple miners remain easy to distinguish.
 
 ## Safe behavior
 
@@ -115,6 +129,7 @@ The integration reloads automatically and recalculates the optimum from the new 
 - The optimizer only selects target wattages explicitly present in the measured profile.
 - The minimum retune threshold reduces unnecessary miner reconfiguration.
 - If the miner is off and its hashrate entity becomes unavailable, a zero wall-power reading is treated as zero current hashrate for current-profit reporting only. Optimal-profit calculations remain profile-based.
+- The farm dashboard is admin-only in v0.3.0.
 
 ## Installation with HACS
 
@@ -126,14 +141,34 @@ https://github.com/pwschattenberg/asic-profit-optimizer
 
 Then download ASIC Profit Optimizer, restart Home Assistant, and add it from **Settings → Devices & services → Add integration**.
 
+After at least one miner is configured, **ASIC Profit** appears in the Home Assistant left sidebar.
+
 ## Multiple miners
 
-Add one config entry per miner. Each miner gets its own profile, calculated entities, Mining Request, and Auto Optimize control.
+Add one ASIC Profit Optimizer config entry per miner. Each miner gets its own profile, calculated entities, Mining Request, and Auto Optimize control.
 
-This avoids duplicating template helpers and profitability automations for S9, S9i, S19, S19j Pro, or other miners that expose compatible Home Assistant entities.
+The farm dashboard discovers all configured entries automatically, so adding an S9, S9i, S19j Pro, or another compatible miner requires no dashboard YAML.
+
+## Current architecture
+
+```text
+Physical ASIC
+    ↓
+hass-miner / existing miner integration
+    ↓
+hashrate + power + writable power-limit entities
+    ↓
+ASIC Profit Optimizer
+    ├── per-miner profitability
+    ├── optimal power target
+    ├── Mining Request
+    └── ASIC Profit farm dashboard
+```
+
+The profitability engine remains separate from the miner transport layer. A future direct pyasic adapter can therefore be added without changing the economics engine.
 
 ## Roadmap
 
-The next architectural step is farm-level aggregation and a dedicated Home Assistant dashboard/card showing total hashrate, total power, aggregate profit, active/profitable miners, and per-miner optimal targets.
+Planned follow-on work includes native farm-level Home Assistant entities for automations/history, improved profile editing/calibration, richer farm controls, and an optional direct miner transport layer.
 
-Longer term, the profitability engine can remain independent from the miner transport layer so adapters other than hass-miner can be supported without changing the economics engine.
+A donation section for project support may also be added later.
