@@ -18,9 +18,9 @@ The integration selects the measured point with the highest expected profit. Neg
 
 The optimizer continues calculating while the miner is powered off because optimal profitability uses the stored power/hashrate profile rather than live miner consumption.
 
-## v0.3.0 farm dashboard
+## Farm dashboard
 
-v0.3.0 adds an admin-only **ASIC Profit** panel directly to the Home Assistant left sidebar.
+The integration adds an admin-only **ASIC Profit** panel directly to the Home Assistant left sidebar.
 
 The farm dashboard aggregates every configured ASIC Profit Optimizer miner and shows:
 
@@ -37,7 +37,7 @@ The farm dashboard aggregates every configured ASIC Profit Optimizer miner and s
 
 The dashboard also lets an administrator toggle **Auto Optimize** for each miner.
 
-Farm optimal profit assumes miners whose best measured operating point is unprofitable remain off, so a negative per-miner optimal profit contributes zero to the farm optimum.
+Farm optimal profit assumes miners whose best measured operating point is unprofitable remain off, so a negative per-miner best-point profit contributes zero to the farm optimum.
 
 The panel uses Home Assistant's authenticated WebSocket API and does not expose a separate web server.
 
@@ -124,12 +124,16 @@ Each config-entry heading uses the configured miner name, so multiple miners rem
 
 ## Safe behavior
 
-- Auto Optimize defaults to OFF on first installation.
-- If hashprice or electricity price is unavailable, no mining request is generated and no power target is changed.
+- Auto Optimize defaults to OFF on first installation and restores its previous state after a restart.
+- Mining Request remains unknown while Auto Optimize is restoring, rather than briefly reporting OFF.
+- If Auto Optimize is enabled but market inputs are not ready, Mining Request remains unknown so an external power arbiter does not interpret startup as an explicit shutdown request.
+- A non-positive hashprice is treated as unavailable. This protects against template sensors that temporarily use `0` as a startup/failure sentinel while upstream market data is loading.
+- Negative electricity prices remain fully supported.
+- If hashprice or electricity price is unavailable, no power target is changed.
 - The optimizer only selects target wattages explicitly present in the measured profile.
 - The minimum retune threshold reduces unnecessary miner reconfiguration.
 - If the miner is off and its hashrate entity becomes unavailable, a zero wall-power reading is treated as zero current hashrate for current-profit reporting only. Optimal-profit calculations remain profile-based.
-- The farm dashboard is admin-only in v0.3.0.
+- The farm dashboard is admin-only.
 
 ## Installation with HACS
 
@@ -173,7 +177,8 @@ If ASIC Profit Optimizer is useful to you and you'd like to support continued de
 
 - **Bitcoin (BTC):** `329tN2TMuebposHNf6f25QwcjAwTnVkjjs`
 - **Bitcoin Cash (BCH):** `1A7ZpJ15HB8F1PQumpXBNkhUSRhUtSKHsG`
-- **Buy Me a Coffee:** https://buymeacoffee.com/pschattenberg
+
+[<img src="https://cdn.buymeacoffee.com/buttons/v2/default-yellow.png" height="41" width="174">](https://www.buymeacoffee.com/pschattenberg)
 
 ## Roadmap
 
