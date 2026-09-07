@@ -1,4 +1,4 @@
-"""Sensor entities."""
+"""Sensor entities for ASIC Profit Optimizer."""
 
 from homeassistant.components.sensor import (
     SensorDeviceClass,
@@ -22,7 +22,14 @@ DEFINITIONS = {
         SensorDeviceClass.POWER,
     ),
     "optimal_hashrate": ("Optimal Hashrate", "TH/s", None),
+    "optimal_efficiency": ("Optimal Efficiency", "W/TH", None),
     "optimal_profit": ("Optimal Profit", "€/h", None),
+    "optimal_daily_profit": ("Optimal Daily Profit", "€/day", None),
+    "break_even_electricity_price": (
+        "Break-even Electricity Price",
+        "€/kWh",
+        None,
+    ),
 }
 
 
@@ -60,11 +67,15 @@ class AsicProfitSensor(AsicProfitEntity, SensorEntity):
 
     @property
     def native_value(self):
+        """Return the latest calculated value."""
         value = getattr(self.manager.calculate(), self.key)
         if value is None:
             return None
 
         if self.key in ("optimal_power", "optimal_actual_power"):
             return round(value, 1)
+
+        if self.key == "optimal_efficiency":
+            return round(value, 2)
 
         return round(value, 6)
