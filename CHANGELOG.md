@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.2.1
+
+- Reclassify ASIC Profit Optimizer from a Home Assistant `helper` integration to a `device` integration.
+- This moves configured miners out of the Helpers section and gives each optimizer entry the expected native Devices & Services integration/device experience.
+- Keep the existing Configure options flow and per-miner virtual device entities unchanged.
+
 ## 0.2.0
 
 - Add a native **Configure** options flow so measured power/hashrate profiles can be edited after initial setup.
