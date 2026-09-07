@@ -18,6 +18,7 @@ class AutoOptimizeSwitch(AsicProfitEntity, SwitchEntity, RestoreEntity):
     """Enable mining requests and automatic optimum power-target updates."""
 
     _attr_name = "Auto Optimize"
+    _attr_icon = "mdi:auto-fix"
 
     def __init__(self, manager) -> None:
         super().__init__(manager, "auto_optimize")
