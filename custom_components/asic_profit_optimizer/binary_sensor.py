@@ -33,6 +33,7 @@ class ProfitableBinarySensor(_BaseBinarySensor):
     """True whenever at least one measured curve point is profitable."""
 
     _attr_name = "Profitable"
+    _attr_icon = "mdi:finance"
 
     def __init__(self, manager) -> None:
         super().__init__(manager, "profitable")
@@ -46,6 +47,7 @@ class MiningRequestBinarySensor(_BaseBinarySensor):
     """The mining-only request output for external automations."""
 
     _attr_name = "Mining Request"
+    _attr_icon = "mdi:pickaxe"
 
     def __init__(self, manager) -> None:
         super().__init__(manager, "mining_request")

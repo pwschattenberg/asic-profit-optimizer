@@ -188,4 +188,4 @@ If ASIC Profit Optimizer is useful to you and you'd like to support continued de
 
 ## Roadmap
 
-Planned follow-on work includes native farm-level Home Assistant entities for automations/history, improved profile editing/calibration, richer farm controls, more meaningful per-entity icons, and an optional direct miner transport layer.
+Planned follow-on work includes native farm-level Home Assistant entities for automations/history, improved profile editing/calibration, richer farm controls, and an optional direct miner transport layer.
