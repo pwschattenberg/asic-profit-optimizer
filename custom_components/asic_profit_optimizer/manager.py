@@ -64,8 +64,9 @@ class AsicProfitManager:
         self.name: str = self.config[CONF_NAME]
         self.curve: list[CurvePoint] = parse_curve(self.config[CONF_CURVE])
 
-        # Safe default: automatic control begins disabled on a new config entry.
+        # Safe defaults until the RestoreEntity switch has restored its state.
         self.auto_optimize = False
+        self.auto_optimize_initialized = False
 
         self.signal = f"asic_profit_optimizer_update_{entry.entry_id}"
         self._unsub_state = None
@@ -115,11 +116,32 @@ class AsicProfitManager:
         except (TypeError, ValueError):
             return None
 
+    def _hashprice(self) -> float | None:
+        """Return a usable hashprice.
+
+        Hashprice must be strictly positive. A number of Home Assistant template
+        sensors use 0 as their startup/failure sentinel while an upstream market
+        or network sensor is still unavailable. Treating that sentinel as real
+        market data would briefly make every measured ASIC point look deeply
+        unprofitable during Home Assistant startup.
+        """
+        value = self._float_state(self.config[CONF_HASHPRICE_SENSOR])
+        if value is None or value <= 0:
+            return None
+        return value
+
+    def economics_ready(self) -> bool:
+        """Return whether the market inputs are usable for optimization."""
+        return (
+            self._hashprice() is not None
+            and self._float_state(self.config[CONF_ELECTRICITY_PRICE_SENSOR]) is not None
+        )
+
     def calculate(self) -> Metrics:
         """Calculate current and predicted/optimal metrics."""
         result = Metrics()
 
-        hashprice = self._float_state(self.config[CONF_HASHPRICE_SENSOR])
+        hashprice = self._hashprice()
         electricity = self._float_state(self.config[CONF_ELECTRICITY_PRICE_SENSOR])
         hashrate = self._float_state(self.config[CONF_HASHRATE_SENSOR])
         power = self._float_state(self.config[CONF_POWER_SENSOR])
@@ -175,13 +197,33 @@ class AsicProfitManager:
             return None
         return optimal_profit > 0
 
+    def mining_request_state(self) -> bool | None:
+        """Return the external Mining Request state, including startup unknown.
+
+        Before Auto Optimize has restored its previous state, or while Auto
+        Optimize is enabled but market inputs are not yet usable, return None.
+        This prevents a power-arbitration automation from interpreting a
+        transient Home Assistant startup condition as an explicit request to
+        switch the ASIC off.
+        """
+        if not self.auto_optimize_initialized:
+            return None
+        if not self.auto_optimize:
+            return False
+
+        profitable = self.profitable()
+        if profitable is None:
+            return None
+        return profitable
+
     def mining_requested(self) -> bool:
-        """Output signal for external power/arbitration automations."""
-        return self.auto_optimize and self.profitable() is True
+        """Return True only when mining is explicitly requested."""
+        return self.mining_request_state() is True
 
     async def async_set_auto_optimize(self, enabled: bool) -> None:
         """Enable/disable the automatic mining request + power tuning."""
         self.auto_optimize = enabled
+        self.auto_optimize_initialized = True
 
         if not enabled:
             self._cancel_power_task()

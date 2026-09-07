@@ -71,10 +71,20 @@ def _manager_snapshot(hass: HomeAssistant, entry_id: str, manager) -> dict[str, 
     if hashrate is None and power is not None and abs(power) < 1.0:
         hashrate = 0.0
 
-    active = bool(
-        (power is not None and power > 25.0)
-        or (hashrate is not None and hashrate > 0.05)
-    )
+    telemetry_known = hashrate is not None or power is not None
+    active = None
+    if telemetry_known:
+        active = bool(
+            (power is not None and power > 25.0)
+            or (hashrate is not None and hashrate > 0.05)
+        )
+
+    profitable = manager.profitable()
+    mining_request = manager.mining_request_state()
+
+    hashprice = _float_state(hass, hashprice_entity)
+    if hashprice is not None and hashprice <= 0:
+        hashprice = None
 
     return {
         "entry_id": entry_id,
@@ -92,13 +102,18 @@ def _manager_snapshot(hass: HomeAssistant, entry_id: str, manager) -> dict[str, 
         "optimal_profit_per_hour": metrics.optimal_profit,
         "optimal_profit_per_day": metrics.optimal_daily_profit,
         "break_even_electricity_price": metrics.break_even_electricity_price,
-        "profitable": manager.profitable() is True,
-        "mining_request": manager.mining_requested(),
+        "profitable": profitable is True,
+        "profitability_known": profitable is not None,
+        "mining_request": mining_request is True,
+        "mining_request_known": mining_request is not None,
         "auto_optimize": manager.auto_optimize,
+        "auto_optimize_initialized": manager.auto_optimize_initialized,
+        "market_ready": manager.economics_ready(),
         "active": active,
+        "telemetry_known": telemetry_known,
         "sources": {
             "hashprice_entity": hashprice_entity,
-            "hashprice": _float_state(hass, hashprice_entity),
+            "hashprice": hashprice,
             "electricity_entity": electricity_entity,
             "electricity_price": _float_state(hass, electricity_entity),
             "hashrate_entity": hashrate_entity,

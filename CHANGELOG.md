@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.3.2
+
+- Make the ASIC Profit dashboard react to Home Assistant state updates without requiring a manual browser refresh.
+- Keep a low-frequency refresh fallback for unusual frontend/browser conditions.
+- Treat non-positive hashprice values as unavailable so startup template sentinels such as `0` do not briefly make every miner appear unprofitable.
+- Keep Mining Request unknown while Auto Optimize is restoring or while required market data is unavailable, preventing external power arbitration from interpreting startup as an explicit shutdown request.
+- Show waiting/pending states in the dashboard instead of misleading zero or negative values while market data is still loading.
+- Rename the table's target column to **Optimal action** and show **OFF** when the best measured point is unprofitable while retaining the best measured wattage for reference.
+- Fix singular profile-point wording.
+- Use the official Buy Me a Coffee image button in the README.
+
 ## 0.3.1
 
 - Replace per-miner dashboard cards with a compact farm table.
