@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.3.1
+
+- Replace per-miner dashboard cards with a compact farm table.
+- Keep farm summary cards at the top while making individual miner comparison much easier.
+- Add table columns for status, hashrate, wall power, current profit, optimal target, optimal profit, daily optimal profit, break-even electricity price, Mining Request, and Auto Optimize.
+- Add a farm-total footer row for the key aggregate metrics.
+- Preserve per-miner Auto Optimize controls and the existing mining-only architecture.
+
 ## 0.3.0
 
 - Add an admin-only **ASIC Profit** farm dashboard to the Home Assistant left sidebar.
