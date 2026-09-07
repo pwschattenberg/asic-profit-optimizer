@@ -25,7 +25,14 @@ const money = (value, suffix = "") =>
     : `${Number(value) >= 0 ? "+" : ""}€${number(value, 4)}${suffix}`;
 
 const profitClass = (value) =>
-  value === null || value === undefined ? "" : Number(value) >= 0 ? "positive" : "negative";
+  value === null || value === undefined
+    ? ""
+    : Number(value) >= 0
+      ? "positive"
+      : "negative";
+
+const plural = (count, singular, pluralForm = `${singular}s`) =>
+  `${number(count, 0)} ${Number(count) === 1 ? singular : pluralForm}`;
 
 class AsicProfitPanel extends HTMLElement {
   constructor() {
@@ -37,13 +44,12 @@ class AsicProfitPanel extends HTMLElement {
     this._error = null;
     this._loading = false;
     this._refreshTimer = null;
+    this._debounceTimer = null;
   }
 
   set hass(value) {
     this._hass = value;
-    if (!this._data && !this._loading) {
-      this._load();
-    }
+    this._scheduleLoad();
   }
 
   get hass() {
@@ -56,10 +62,12 @@ class AsicProfitPanel extends HTMLElement {
 
   connectedCallback() {
     this._render();
-    if (this._hass) {
-      this._load();
-    }
-    this._refreshTimer = window.setInterval(() => this._load(), 5000);
+    this._scheduleLoad(0);
+
+    // Home Assistant pushes a fresh hass object whenever states change. The
+    // hass setter above handles normal live updates. This timer is only a
+    // low-frequency fallback for unusual frontend/browser conditions.
+    this._refreshTimer = window.setInterval(() => this._load(), 30000);
   }
 
   disconnectedCallback() {
@@ -67,6 +75,20 @@ class AsicProfitPanel extends HTMLElement {
       window.clearInterval(this._refreshTimer);
       this._refreshTimer = null;
     }
+    if (this._debounceTimer) {
+      window.clearTimeout(this._debounceTimer);
+      this._debounceTimer = null;
+    }
+  }
+
+  _scheduleLoad(delay = 150) {
+    if (!this._hass) return;
+    if (this._debounceTimer) window.clearTimeout(this._debounceTimer);
+
+    this._debounceTimer = window.setTimeout(() => {
+      this._debounceTimer = null;
+      this._load();
+    }, delay);
   }
 
   async _load() {
@@ -115,22 +137,90 @@ class AsicProfitPanel extends HTMLElement {
     `;
   }
 
+  _partial(key) {
+    const farm = this._data?.farm;
+    return farm?.complete && farm.complete[key] === false
+      ? '<span class="partial">partial</span>'
+      : "";
+  }
+
+  _aggregateDisplay(field, aggregateValue, digits, unit, completeKey) {
+    const miners = this._data?.miners || [];
+    const allUnknown =
+      miners.length > 0 &&
+      miners.every((miner) => miner[field] === null || miner[field] === undefined);
+
+    if (allUnknown) {
+      return `— ${this._partial(completeKey)}`;
+    }
+
+    return `${number(aggregateValue, digits)}${unit ? ` ${unit}` : ""} ${this._partial(completeKey)}`;
+  }
+
+  _aggregateMoney(field, aggregateValue, suffix, completeKey) {
+    const miners = this._data?.miners || [];
+    const allUnknown =
+      miners.length > 0 &&
+      miners.every((miner) => miner[field] === null || miner[field] === undefined);
+
+    if (allUnknown) {
+      return `— ${this._partial(completeKey)}`;
+    }
+
+    return `${money(aggregateValue, suffix)} ${this._partial(completeKey)}`;
+  }
+
   _status(miner) {
+    if (!miner.telemetry_known) {
+      return `
+        <div class="status-stack">
+          <span class="status waiting">○ Waiting</span>
+          ${
+            miner.profitability_known
+              ? `<span class="status ${miner.profitable ? "profitable" : ""}">
+                   ${miner.profitable ? "Profitable" : "Not profitable"}
+                 </span>`
+              : '<span class="status waiting">Market data pending</span>'
+          }
+        </div>
+      `;
+    }
+
     const active = miner.active
       ? '<span class="status active">● Active</span>'
       : '<span class="status">○ Off</span>';
 
-    const profitable = miner.profitable
-      ? '<span class="status profitable">Profitable</span>'
-      : '<span class="status">Not profitable</span>';
+    const profitable = miner.profitability_known
+      ? miner.profitable
+        ? '<span class="status profitable">Profitable</span>'
+        : '<span class="status">Not profitable</span>'
+      : '<span class="status waiting">Market data pending</span>';
 
     return `<div class="status-stack">${active}${profitable}</div>`;
   }
 
   _request(miner) {
+    if (!miner.mining_request_known) {
+      return '<span class="request waiting">WAIT</span>';
+    }
     return miner.mining_request
       ? '<span class="request on">ON</span>'
       : '<span class="request">OFF</span>';
+  }
+
+  _optimalAction(miner) {
+    if (!miner.profitability_known || miner.optimal_power_w === null) {
+      return '<span class="waiting-text">Waiting</span>';
+    }
+
+    if (!miner.profitable) {
+      return `
+        <span class="action-off">OFF</span>
+        <span class="best-point">best point ${number(miner.optimal_power_w, 0)} W</span>
+      `;
+    }
+
+    return `${number(miner.optimal_power_w, 0)} <span class="unit">W</span>`;
   }
 
   _minerRow(miner) {
@@ -139,7 +229,7 @@ class AsicProfitPanel extends HTMLElement {
       <tr>
         <td class="miner-cell">
           <strong>${esc(miner.name)}</strong>
-          <span>${number(miner.profile_points, 0)} profile points</span>
+          <span>${plural(miner.profile_points, "profile point")}</span>
         </td>
         <td>${this._status(miner)}</td>
         <td class="numeric">${number(miner.hashrate_ths, 3)} <span class="unit">TH/s</span></td>
@@ -147,8 +237,8 @@ class AsicProfitPanel extends HTMLElement {
         <td class="numeric ${profitClass(miner.current_profit_per_hour)}">
           ${money(miner.current_profit_per_hour, "/h")}
         </td>
-        <td class="numeric">
-          ${number(miner.optimal_power_w, 0)} <span class="unit">W</span>
+        <td class="numeric action-cell">
+          ${this._optimalAction(miner)}
         </td>
         <td class="numeric ${profitClass(miner.optimal_profit_per_hour)}">
           ${money(miner.optimal_profit_per_hour, "/h")}
@@ -157,7 +247,11 @@ class AsicProfitPanel extends HTMLElement {
           ${money(miner.optimal_profit_per_day, "/day")}
         </td>
         <td class="numeric">
-          €${number(miner.break_even_electricity_price, 4)}<span class="unit">/kWh</span>
+          ${
+            miner.break_even_electricity_price === null
+              ? "—"
+              : `€${number(miner.break_even_electricity_price, 4)}<span class="unit">/kWh</span>`
+          }
         </td>
         <td class="center">${this._request(miner)}</td>
         <td class="center">
@@ -165,9 +259,14 @@ class AsicProfitPanel extends HTMLElement {
             class="auto-button ${miner.auto_optimize ? "enabled" : ""}"
             data-auto-entity="${esc(autoEntity || "")}"
             data-auto-state="${miner.auto_optimize ? "on" : "off"}"
-            ${autoEntity ? "" : "disabled"}
+            ${autoEntity && miner.auto_optimize_initialized ? "" : "disabled"}
+            title="${
+              miner.auto_optimize_initialized
+                ? "Toggle Auto Optimize"
+                : "Waiting for Home Assistant to restore Auto Optimize state"
+            }"
           >
-            ${miner.auto_optimize ? "ON" : "OFF"}
+            ${miner.auto_optimize_initialized ? (miner.auto_optimize ? "ON" : "OFF") : "…"}
           </button>
         </td>
       </tr>
@@ -181,11 +280,6 @@ class AsicProfitPanel extends HTMLElement {
     const farm = data?.farm;
     const miners = data?.miners || [];
     const shared = data?.shared || {};
-
-    const partial = (key) =>
-      farm?.complete && farm.complete[key] === false
-        ? '<span class="partial">partial</span>'
-        : "";
 
     this.shadowRoot.innerHTML = `
       <style>
@@ -263,6 +357,10 @@ class AsicProfitPanel extends HTMLElement {
           border: 1px solid var(--divider-color);
           border-radius: 999px;
           padding: 7px 11px;
+        }
+
+        .source-pill.pending {
+          color: var(--warning-color);
         }
 
         .summary-grid {
@@ -355,10 +453,6 @@ class AsicProfitPanel extends HTMLElement {
           background: var(--secondary-background-color);
         }
 
-        tbody tr:last-child td {
-          border-bottom: 1px solid var(--divider-color);
-        }
-
         tfoot td {
           font-weight: 600;
           background: var(--secondary-background-color);
@@ -374,7 +468,8 @@ class AsicProfitPanel extends HTMLElement {
           font-size: 14px;
         }
 
-        .miner-cell span {
+        .miner-cell span,
+        .best-point {
           display: block;
           margin-top: 3px;
           color: var(--secondary-text-color);
@@ -407,9 +502,24 @@ class AsicProfitPanel extends HTMLElement {
           color: var(--success-color);
         }
 
+        .status.waiting,
+        .request.waiting,
+        .waiting-text {
+          color: var(--warning-color);
+        }
+
+        .action-off {
+          color: var(--secondary-text-color);
+          font-weight: 600;
+        }
+
         .numeric {
           text-align: right;
           font-variant-numeric: tabular-nums;
+        }
+
+        .action-cell {
+          min-width: 120px;
         }
 
         .center { text-align: center; }
@@ -477,23 +587,25 @@ class AsicProfitPanel extends HTMLElement {
         ${this._error ? `<div class="error">${esc(this._error)}</div>` : ""}
 
         ${
-          shared.hashprice || shared.electricity
+          miners.length
             ? `
               <div class="economics">
-                ${
-                  shared.hashprice
-                    ? `<div class="source-pill">
-                         Hashprice: €${number(shared.hashprice.value, 6)}/TH/day
-                       </div>`
-                    : ""
-                }
-                ${
-                  shared.electricity
-                    ? `<div class="source-pill">
-                         Electricity: €${number(shared.electricity.value, 4)}/kWh
-                       </div>`
-                    : ""
-                }
+                <div class="source-pill ${shared.hashprice?.value == null ? "pending" : ""}">
+                  Hashprice:
+                  ${
+                    shared.hashprice?.value == null
+                      ? "waiting for market data"
+                      : `€${number(shared.hashprice.value, 6)}/TH/day`
+                  }
+                </div>
+                <div class="source-pill ${shared.electricity?.value == null ? "pending" : ""}">
+                  Electricity:
+                  ${
+                    shared.electricity?.value == null
+                      ? "waiting for data"
+                      : `€${number(shared.electricity.value, 4)}/kWh`
+                  }
+                </div>
               </div>
             `
             : ""
@@ -510,20 +622,44 @@ class AsicProfitPanel extends HTMLElement {
                 )}
                 ${this._summaryCard(
                   "Hashrate",
-                  `${number(farm.total_hashrate_ths, 3)} TH/s ${partial("hashrate")}`
+                  this._aggregateDisplay(
+                    "hashrate_ths",
+                    farm.total_hashrate_ths,
+                    3,
+                    "TH/s",
+                    "hashrate"
+                  )
                 )}
                 ${this._summaryCard(
                   "Wall power",
-                  `${number(farm.total_power_w / 1000, 3)} kW ${partial("power")}`
+                  this._aggregateDisplay(
+                    "power_w",
+                    farm.total_power_w / 1000,
+                    3,
+                    "kW",
+                    "power"
+                  )
                 )}
                 ${this._summaryCard(
                   "Current profit",
-                  `${money(farm.current_profit_per_hour, "/h")} ${partial("current_profit")}`
+                  this._aggregateMoney(
+                    "current_profit_per_hour",
+                    farm.current_profit_per_hour,
+                    "/h",
+                    "current_profit"
+                  )
                 )}
                 ${this._summaryCard(
                   "Optimal profit",
-                  `${money(farm.optimal_profit_per_hour, "/h")} ${partial("optimal_profit")}`,
-                  `${money(farm.optimal_profit_per_day, "/day")}`
+                  this._aggregateMoney(
+                    "optimal_profit_per_hour",
+                    farm.optimal_profit_per_hour,
+                    "/h",
+                    "optimal_profit"
+                  ),
+                  miners.every((miner) => miner.optimal_profit_per_hour == null)
+                    ? "waiting for market data"
+                    : money(farm.optimal_profit_per_day, "/day")
                 )}
                 ${this._summaryCard(
                   "Mining requests",
@@ -549,9 +685,9 @@ class AsicProfitPanel extends HTMLElement {
                       <th class="numeric">Hashrate</th>
                       <th class="numeric">Wall power</th>
                       <th class="numeric">Current profit</th>
-                      <th class="numeric">Optimal target</th>
-                      <th class="numeric">Optimal profit</th>
-                      <th class="numeric">Optimal / day</th>
+                      <th class="numeric">Optimal action</th>
+                      <th class="numeric">Best-point profit</th>
+                      <th class="numeric">Best-point / day</th>
                       <th class="numeric">Break-even</th>
                       <th class="center">Mining request</th>
                       <th class="center">Auto optimize</th>
@@ -567,12 +703,38 @@ class AsicProfitPanel extends HTMLElement {
                           <tr>
                             <td>Farm total</td>
                             <td>${farm.active_miners} active</td>
-                            <td class="numeric">${number(farm.total_hashrate_ths, 3)} <span class="unit">TH/s</span></td>
-                            <td class="numeric">${number(farm.total_power_w, 1)} <span class="unit">W</span></td>
-                            <td class="numeric ${profitClass(farm.current_profit_per_hour)}">${money(farm.current_profit_per_hour, "/h")}</td>
+                            <td class="numeric">${this._aggregateDisplay(
+                              "hashrate_ths",
+                              farm.total_hashrate_ths,
+                              3,
+                              "TH/s",
+                              "hashrate"
+                            )}</td>
+                            <td class="numeric">${this._aggregateDisplay(
+                              "power_w",
+                              farm.total_power_w,
+                              1,
+                              "W",
+                              "power"
+                            )}</td>
+                            <td class="numeric ${profitClass(farm.current_profit_per_hour)}">${this._aggregateMoney(
+                              "current_profit_per_hour",
+                              farm.current_profit_per_hour,
+                              "/h",
+                              "current_profit"
+                            )}</td>
                             <td class="numeric">—</td>
-                            <td class="numeric ${profitClass(farm.optimal_profit_per_hour)}">${money(farm.optimal_profit_per_hour, "/h")}</td>
-                            <td class="numeric ${profitClass(farm.optimal_profit_per_day)}">${money(farm.optimal_profit_per_day, "/day")}</td>
+                            <td class="numeric ${profitClass(farm.optimal_profit_per_hour)}">${this._aggregateMoney(
+                              "optimal_profit_per_hour",
+                              farm.optimal_profit_per_hour,
+                              "/h",
+                              "optimal_profit"
+                            )}</td>
+                            <td class="numeric ${profitClass(farm.optimal_profit_per_day)}">${
+                              miners.every((miner) => miner.optimal_profit_per_day == null)
+                                ? "—"
+                                : money(farm.optimal_profit_per_day, "/day")
+                            }</td>
                             <td class="numeric">—</td>
                             <td class="center">${farm.mining_requested_miners}</td>
                             <td class="center">${farm.auto_optimize_miners}</td>
