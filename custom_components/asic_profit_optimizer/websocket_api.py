@@ -163,6 +163,7 @@ def websocket_get_farm(
     ]
 
     result = {
+        "currency": hass.config.currency,
         "farm": aggregate_farm(miners),
         "miners": miners,
         "shared": {

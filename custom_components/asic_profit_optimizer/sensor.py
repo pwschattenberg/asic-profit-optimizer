@@ -12,9 +12,9 @@ from .const import DOMAIN
 from .entity import AsicProfitEntity
 
 DEFINITIONS = {
-    "current_revenue": ("Current Revenue", "€/h", None),
-    "current_electricity_cost": ("Current Electricity Cost", "€/h", None),
-    "current_profit": ("Current Profit", "€/h", None),
+    "current_revenue": ("Current Revenue", None, None),
+    "current_electricity_cost": ("Current Electricity Cost", None, None),
+    "current_profit": ("Current Profit", None, None),
     "optimal_power": ("Optimal Power", UnitOfPower.WATT, SensorDeviceClass.POWER),
     "optimal_actual_power": (
         "Optimal Actual Power",
@@ -23,13 +23,22 @@ DEFINITIONS = {
     ),
     "optimal_hashrate": ("Optimal Hashrate", "TH/s", None),
     "optimal_efficiency": ("Optimal Efficiency", "W/TH", None),
-    "optimal_profit": ("Optimal Profit", "€/h", None),
-    "optimal_daily_profit": ("Optimal Daily Profit", "€/day", None),
+    "optimal_profit": ("Optimal Profit", None, None),
+    "optimal_daily_profit": ("Optimal Daily Profit", None, None),
     "break_even_electricity_price": (
         "Break-even Electricity Price",
-        "€/kWh",
+        None,
         None,
     ),
+}
+
+CURRENCY_UNIT_SUFFIXES = {
+    "current_revenue": "h",
+    "current_electricity_cost": "h",
+    "current_profit": "h",
+    "optimal_profit": "h",
+    "optimal_daily_profit": "day",
+    "break_even_electricity_price": "kWh",
 }
 
 
@@ -53,6 +62,8 @@ class AsicProfitSensor(AsicProfitEntity, SensorEntity):
         super().__init__(manager, key)
         self.key = key
         self._attr_name = name
+        if suffix := CURRENCY_UNIT_SUFFIXES.get(key):
+            unit = f"{manager.hass.config.currency}/{suffix}"
         self._attr_native_unit_of_measurement = unit
         self._attr_device_class = device_class
 

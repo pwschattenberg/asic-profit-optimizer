@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.3.3
+
+- Use the Home Assistant configured currency instead of hardcoded euro units.
+- Format dashboard monetary values using the configured currency and browser locale.
+- Expose calculated sensor units as currency-aware values such as `EUR/h`, `USD/day`, and `GBP/kWh`.
+- Rename the summary metric to **Optimal farm profit** and explain when a zero optimum means all unprofitable miners should remain off.
+- Stop placing the farm optimum under the per-miner **Best-point profit** footer columns, avoiding a misleading aggregate label.
+- Show the farm-level optimal action as **OFF** when no configured miner is profitable.
+- Document that ASIC Profit Optimizer does not perform FX conversion and expects hashprice and electricity inputs in the same currency.
+- Add more meaningful entity icons to the roadmap for a later release.
+
 ## 0.3.2
 
 - Make the ASIC Profit dashboard react to Home Assistant state updates without requiring a manual browser refresh.
@@ -48,7 +59,7 @@
 ## 0.2.0
 
 - Add a native **Configure** options flow so measured power/hashrate profiles can be edited after initial setup.
-- Reload the integration automatically after profile/tuning options are changed.
+- Reload the integration automatically after options changes.
 - Preserve existing v0.1 config entries without migration.
 - Add **Optimal Efficiency**, **Optimal Daily Profit**, and **Break-even Electricity Price** sensors.
 - Treat unavailable live hashrate as zero when measured wall power is effectively zero, while keeping optimal calculations profile-based.
