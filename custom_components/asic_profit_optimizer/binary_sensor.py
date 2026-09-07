@@ -51,5 +51,5 @@ class MiningRequestBinarySensor(_BaseBinarySensor):
         super().__init__(manager, "mining_request")
 
     @property
-    def is_on(self) -> bool:
-        return self.manager.mining_requested()
+    def is_on(self) -> bool | None:
+        return self.manager.mining_request_state()
