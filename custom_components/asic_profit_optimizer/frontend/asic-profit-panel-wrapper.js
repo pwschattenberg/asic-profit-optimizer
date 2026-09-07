@@ -57,6 +57,9 @@ if (Panel && !Panel.prototype.__mobileCardsPatched) {
 
         tbody td {
           display: flex !important;
+          position: static !important;
+          left: auto !important;
+          z-index: auto !important;
           width: 100% !important;
           min-width: 0 !important;
           align-items: center !important;
@@ -64,6 +67,8 @@ if (Panel && !Panel.prototype.__mobileCardsPatched) {
           gap: 16px !important;
           padding: 11px 0 !important;
           border-bottom: 1px solid var(--divider-color) !important;
+          background: transparent !important;
+          box-shadow: none !important;
           white-space: normal !important;
           text-align: right !important;
         }
