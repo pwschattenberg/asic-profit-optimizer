@@ -68,7 +68,7 @@ def _setup_schema() -> vol.Schema:
 
 
 def _options_schema() -> vol.Schema:
-    """Build editable miner identity, source, profile, and tuning options."""
+    """Build editable miner source, profile, identity, and tuning options."""
     return vol.Schema(
         {
             vol.Required(CONF_NAME): selector.TextSelector(),
@@ -76,7 +76,6 @@ def _options_schema() -> vol.Schema:
             vol.Required(CONF_ELECTRICITY_PRICE_SENSOR): _entity_selector("sensor"),
             vol.Required(CONF_HASHRATE_SENSOR): _entity_selector("sensor"),
             vol.Required(CONF_POWER_SENSOR): _entity_selector("sensor"),
-            vol.Required(CONF_POWER_LIMIT_ENTITY): _entity_selector("number"),
             vol.Required(CONF_CURVE): selector.TextSelector(
                 selector.TextSelectorConfig(multiline=True)
             ),
@@ -171,14 +170,6 @@ class AsicProfitOptimizerConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 class AsicProfitOptimizerOptionsFlow(OptionsFlowWithReload):
     """Edit miner sources, profile, identity, and tuning behavior."""
 
-    def _power_limit_already_used(self, entity_id: str) -> bool:
-        """Return whether another optimizer entry already owns this miner."""
-        return any(
-            entry.entry_id != self.config_entry.entry_id
-            and entry.unique_id == entity_id
-            for entry in self.hass.config_entries.async_entries(DOMAIN)
-        )
-
     async def async_step_init(
         self, user_input: dict[str, Any] | None = None
     ) -> ConfigFlowResult:
@@ -188,24 +179,15 @@ class AsicProfitOptimizerOptionsFlow(OptionsFlowWithReload):
 
         if user_input is not None:
             errors = _validate_curve(user_input)
-
-            if self._power_limit_already_used(user_input[CONF_POWER_LIMIT_ENTITY]):
-                errors[CONF_POWER_LIMIT_ENTITY] = "already_configured"
-
             if not errors:
                 user_input[CONF_NAME] = str(user_input[CONF_NAME]).strip()
 
-                # Keep the config-entry identity aligned when either the miner
-                # name or writable power-limit entity changes.
-                update_kwargs: dict[str, Any] = {}
+                # Keep the config-entry heading in Devices & services aligned
+                # with the miner name shown by the optimizer device.
                 if self.config_entry.title != user_input[CONF_NAME]:
-                    update_kwargs["title"] = user_input[CONF_NAME]
-                if self.config_entry.unique_id != user_input[CONF_POWER_LIMIT_ENTITY]:
-                    update_kwargs["unique_id"] = user_input[CONF_POWER_LIMIT_ENTITY]
-                if update_kwargs:
                     self.hass.config_entries.async_update_entry(
                         self.config_entry,
-                        **update_kwargs,
+                        title=user_input[CONF_NAME],
                     )
 
                 return self.async_create_entry(data=user_input)
@@ -216,7 +198,6 @@ class AsicProfitOptimizerOptionsFlow(OptionsFlowWithReload):
             CONF_ELECTRICITY_PRICE_SENSOR: current[CONF_ELECTRICITY_PRICE_SENSOR],
             CONF_HASHRATE_SENSOR: current[CONF_HASHRATE_SENSOR],
             CONF_POWER_SENSOR: current[CONF_POWER_SENSOR],
-            CONF_POWER_LIMIT_ENTITY: current[CONF_POWER_LIMIT_ENTITY],
             CONF_CURVE: current[CONF_CURVE],
             CONF_MIN_POWER_CHANGE: current.get(
                 CONF_MIN_POWER_CHANGE, DEFAULT_MIN_POWER_CHANGE
