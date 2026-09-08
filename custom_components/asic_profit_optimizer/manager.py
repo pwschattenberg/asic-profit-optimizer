@@ -64,9 +64,11 @@ class AsicProfitManager:
         self.name: str = self.config[CONF_NAME]
         self.curve: list[CurvePoint] = parse_curve(self.config[CONF_CURVE])
 
-        # Safe defaults until the RestoreEntity switch has restored its state.
+        # Safe defaults until the RestoreEntity switches have restored state.
         self.auto_optimize = False
         self.auto_optimize_initialized = False
+        self.manual_mining = False
+        self.manual_mining_initialized = False
 
         self.signal = f"asic_profit_optimizer_update_{entry.entry_id}"
         self._unsub_state = None
@@ -197,17 +199,27 @@ class AsicProfitManager:
             return None
         return optimal_profit > 0
 
-    def mining_request_state(self) -> bool | None:
-        """Return the external Mining Request state, including startup unknown.
+    def automatic_mining_requested(self) -> bool:
+        """Return whether economics explicitly request automatic mining."""
+        if not self.auto_optimize_initialized or not self.auto_optimize:
+            return False
+        return self.profitable() is True
 
-        Before Auto Optimize has restored its previous state, or while Auto
-        Optimize is enabled but market inputs are not yet usable, return None.
-        This prevents a power-arbitration automation from interpreting a
-        transient Home Assistant startup condition as an explicit request to
-        switch the ASIC off.
+    def mining_request_state(self) -> bool | None:
+        """Return the effective external Mining Request state.
+
+        Manual Mining is an explicit override and can force the request on even
+        when mining is unprofitable or market data is unavailable. Otherwise,
+        wait for both restore switches to initialize before emitting an explicit
+        off state. This preserves the startup safety contract used by external
+        power-arbitration automations.
         """
-        if not self.auto_optimize_initialized:
+        if self.manual_mining_initialized and self.manual_mining:
+            return True
+
+        if not self.manual_mining_initialized or not self.auto_optimize_initialized:
             return None
+
         if not self.auto_optimize:
             return False
 
@@ -221,7 +233,7 @@ class AsicProfitManager:
         return self.mining_request_state() is True
 
     async def async_set_auto_optimize(self, enabled: bool) -> None:
-        """Enable/disable the automatic mining request + power tuning."""
+        """Enable/disable automatic profitability-based mining and tuning."""
         self.auto_optimize = enabled
         self.auto_optimize_initialized = True
 
@@ -231,9 +243,23 @@ class AsicProfitManager:
         async_dispatcher_send(self.hass, self.signal)
         self._reconcile_power_target()
 
+    async def async_set_manual_mining(self, enabled: bool) -> None:
+        """Set the manual Mining Request override."""
+        self.manual_mining = enabled
+        self.manual_mining_initialized = True
+
+        async_dispatcher_send(self.hass, self.signal)
+        self._reconcile_power_target()
+
     def _reconcile_power_target(self) -> None:
-        """If mining is requested, set the optimal target when miner is reachable."""
-        if not self.mining_requested():
+        """Apply optimal wattage only for an automatic profitability request.
+
+        Manual Mining deliberately controls only the external Mining Request. It
+        does not retune the miner by itself, so a user can force mining while
+        retaining the miner's current/manual power target. If Auto Optimize later
+        becomes economically active, normal optimal targeting resumes.
+        """
+        if not self.automatic_mining_requested():
             self._cancel_power_task()
             return
 
@@ -265,7 +291,7 @@ class AsicProfitManager:
         deadline = asyncio.get_running_loop().time() + timeout
 
         while asyncio.get_running_loop().time() <= deadline:
-            if not self.mining_requested():
+            if not self.automatic_mining_requested():
                 return
 
             current = self._float_state(entity_id)
