@@ -1,7 +1,7 @@
 {
   "domain": "asic_profit_optimizer",
   "name": "ASIC Profit Optimizer",
-  "version": "0.3.9",
+  "version": "0.3.10",
   "config_flow": true,
   "integration_type": "device",
   "iot_class": "calculated",

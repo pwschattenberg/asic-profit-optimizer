@@ -21,7 +21,7 @@ PANEL_ICON = "mdi:pickaxe"
 _MANIFEST_PATH = Path(__file__).parent / "manifest.json"
 _PANEL_VERSION = json.loads(_MANIFEST_PATH.read_text(encoding="utf-8"))["version"]
 PANEL_ASSET_BASE = f"/{DOMAIN}/assets/{_PANEL_VERSION}"
-PANEL_MODULE = f"{PANEL_ASSET_BASE}/asic-profit-panel-v039.js"
+PANEL_MODULE = f"{PANEL_ASSET_BASE}/asic-profit-panel-v0310.js"
 
 DATA_STATIC_REGISTERED = f"{DOMAIN}_panel_static_registered"
 DATA_WS_REGISTERED = f"{DOMAIN}_websocket_registered"
