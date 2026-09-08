@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.3.10
+
+- Add repository-level HACS brand assets so the project icon can appear in HACS-managed update surfaces as well as native Home Assistant integration pages.
+- Keep the local custom-integration brand assets in `custom_components/asic_profit_optimizer/brand/` for Home Assistant 2026.3+.
+- Reduce unnecessary farm-dashboard reloads by reacting only to entities used by ASIC Profit Optimizer instead of every Home Assistant state change.
+- Defer dashboard rerenders while the user is actively swiping or scrolling, then refresh after interaction settles.
+- Keep the v0.3.9 vertical scroll preservation as a fallback once a deferred rerender occurs.
+- Keep Manual Mining, Auto Optimize, Mining Request, optimizer calculations, and external power arbitration unchanged.
+
 ## 0.3.9
 
 - Add a restored **Manual Mining** switch for each miner that can force the effective Mining Request on regardless of profitability.
