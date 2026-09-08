@@ -10,7 +10,7 @@
           "hashprice_sensor": "Hashprice sensor",
           "electricity_price_sensor": "Electricity price sensor",
           "hashrate_sensor": "Live hashrate sensor",
-          "power_sensor": "Live power sensor",
+          "power_sensor": "Live wall-power sensor",
           "power_limit_entity": "Writable miner power-limit entity",
           "curve": "Measured efficiency curve",
           "min_power_change": "Minimum power change before retuning",
@@ -21,7 +21,7 @@
           "hashprice_sensor": "Net hashprice in currency per TH per day, for example BCH Hashprice in €/TH/day.",
           "electricity_price_sensor": "Electricity price in the same currency per kWh.",
           "hashrate_sensor": "Live miner hashrate in TH/s. Used for current-performance sensors.",
-          "power_sensor": "Live power in W. Prefer true wall power from a smart plug when available.",
+          "power_sensor": "Live electrical power in W used for current electricity cost and current profit. Prefer true wall power from a smart plug; miner-reported power may exclude PSU and conversion losses.",
           "power_limit_entity": "Writable number entity used to set the miner target power, for example hass-miner Power Limit.",
           "curve": "One line per measured point: target_w, actual_wall_w, hashrate_THs. Comments beginning with # are allowed.",
           "min_power_change": "Do not retune the miner unless the target moves by at least this many watts.",
@@ -40,17 +40,27 @@
   "options": {
     "step": {
       "init": {
-        "title": "Configure miner profile",
-        "description": "Rename this miner or update its measured power/hashrate profile and retuning behavior. Changes are applied after Submit and the integration reloads automatically.",
+        "title": "Configure miner",
+        "description": "Update this miner's source entities, measured profile, name, or retuning behavior. Changes are applied after Submit and the integration reloads automatically.",
         "data": {
           "name": "Miner name",
+          "hashprice_sensor": "Hashprice sensor",
+          "electricity_price_sensor": "Electricity price sensor",
+          "hashrate_sensor": "Live hashrate sensor",
+          "power_sensor": "Live wall-power sensor",
+          "power_limit_entity": "Writable miner power-limit entity",
           "curve": "Measured efficiency curve",
           "min_power_change": "Minimum power change before retuning",
           "startup_wait": "Maximum startup wait"
         },
         "data_description": {
           "name": "This name is used for the ASIC Profit Optimizer config-entry heading and the optimizer device's default name.",
-          "curve": "Edit or add rows as: target_w, actual_wall_w, hashrate_THs.",
+          "hashprice_sensor": "Net hashprice in currency per TH per day. You can change providers without recreating the optimizer entry.",
+          "electricity_price_sensor": "Electricity price in the same currency per kWh. You can change the source entity here later.",
+          "hashrate_sensor": "Live miner hashrate in TH/s used for current revenue and current profit.",
+          "power_sensor": "Live electrical power in W used for current electricity cost and current profit. Prefer true wall power from a smart plug; miner-reported power may exclude PSU and conversion losses.",
+          "power_limit_entity": "Writable number entity used to set the miner target power. Changing it also updates this optimizer entry's miner identity.",
+          "curve": "Edit or add rows as: target_w, actual_wall_w, hashrate_THs. Use true measured wall power for actual_wall_w.",
           "min_power_change": "Minimum target change required before the optimizer retunes the miner.",
           "startup_wait": "Maximum time to wait for the writable power-limit entity after an external automation powers the miner."
         }
@@ -58,7 +68,8 @@
     },
     "error": {
       "invalid_curve": "Invalid curve. Use one line per point: target_w, actual_wall_w, hashrate_THs",
-      "invalid_name": "Enter a miner name."
+      "invalid_name": "Enter a miner name.",
+      "already_configured": "This miner power-limit entity is already used by another ASIC Profit Optimizer entry."
     }
   }
 }
