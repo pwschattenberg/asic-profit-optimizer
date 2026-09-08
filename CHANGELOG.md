@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.3.8
+
+- Allow all configured source entities to be changed from the integration's Configure flow without deleting and recreating a miner.
+- Make hashprice, electricity price, live hashrate, live wall power, and writable miner power-limit entities editable after setup.
+- Clarify that Current Electricity Cost and Current Profit should use true wall power when available, because miner-reported power may exclude PSU and conversion losses.
+- Keep the config entry's unique miner identity synchronized when the writable power-limit entity changes and reject a power-limit entity already used by another optimizer entry.
+- Keep measured-profile optimization, Mining Request behavior, power arbitration, and dashboard calculations otherwise unchanged.
+
 ## 0.3.7
 
 - Replace the horizontally scrolling miner table with card-style miner rows on narrow displays.
