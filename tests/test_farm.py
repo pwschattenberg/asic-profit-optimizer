@@ -29,6 +29,7 @@ def test_aggregate_farm_counts_and_totals() -> None:
                 "active": True,
                 "profitable": True,
                 "mining_request": True,
+                "manual_mining": False,
                 "auto_optimize": True,
             },
             {
@@ -39,7 +40,8 @@ def test_aggregate_farm_counts_and_totals() -> None:
                 "optimal_actual_power_w": 800.0,
                 "active": False,
                 "profitable": False,
-                "mining_request": False,
+                "mining_request": True,
+                "manual_mining": True,
                 "auto_optimize": True,
             },
         ]
@@ -48,7 +50,8 @@ def test_aggregate_farm_counts_and_totals() -> None:
     assert result["configured_miners"] == 2
     assert result["active_miners"] == 1
     assert result["profitable_miners"] == 1
-    assert result["mining_requested_miners"] == 1
+    assert result["mining_requested_miners"] == 2
+    assert result["manual_mining_miners"] == 1
     assert result["auto_optimize_miners"] == 2
     assert result["total_hashrate_ths"] == 7.5
     assert result["total_power_w"] == 630.0
@@ -70,6 +73,7 @@ def test_negative_optimal_profit_means_off_at_farm_optimum() -> None:
                 "active": False,
                 "profitable": False,
                 "mining_request": False,
+                "manual_mining": False,
                 "auto_optimize": True,
             }
         ]
@@ -92,6 +96,7 @@ def test_partial_data_is_flagged() -> None:
                 "active": False,
                 "profitable": True,
                 "mining_request": False,
+                "manual_mining": False,
                 "auto_optimize": False,
             }
         ]
