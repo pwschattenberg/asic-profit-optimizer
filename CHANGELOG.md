@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.3.9
+
+- Add a restored **Manual Mining** switch for each miner that can force the effective Mining Request on regardless of profitability.
+- Keep the existing Mining Request binary sensor as the authoritative read-only output so Home Assistant history still records the effective on/off/unknown request state.
+- Keep manual mining separate from automatic retuning: Manual Mining requests power but does not change the miner's current power target by itself.
+- Show Manual Mining controls and counts on the farm dashboard.
+- Preserve the dashboard's vertical scroll position across live data refreshes so mobile users are not snapped back up the page while reading miner cards.
+- Keep the existing mobile card layout, startup-safe unknown state behavior, and external power-arbitration contract.
+
 ## 0.3.8
 
 - Allow the configured economic and telemetry sensor sources to be changed from the integration's Configure flow without deleting and recreating a miner.

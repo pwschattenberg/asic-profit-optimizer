@@ -42,6 +42,9 @@ def aggregate_farm(miners: list[dict[str, Any]]) -> dict[str, Any]:
         "mining_requested_miners": sum(
             bool(miner.get("mining_request")) for miner in miners
         ),
+        "manual_mining_miners": sum(
+            bool(miner.get("manual_mining")) for miner in miners
+        ),
         "auto_optimize_miners": sum(
             bool(miner.get("auto_optimize")) for miner in miners
         ),
