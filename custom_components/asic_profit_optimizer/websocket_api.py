@@ -39,6 +39,7 @@ def _entry_entity_ids(hass: HomeAssistant, entry_id: str) -> dict[str, str]:
 
     wanted = {
         f"{entry_id}_auto_optimize": "auto_optimize",
+        f"{entry_id}_manual_mining": "manual_mining",
         f"{entry_id}_mining_request": "mining_request",
         f"{entry_id}_profitable": "profitable",
         f"{entry_id}_current_profit": "current_profit",
@@ -106,6 +107,8 @@ def _manager_snapshot(hass: HomeAssistant, entry_id: str, manager) -> dict[str, 
         "profitability_known": profitable is not None,
         "mining_request": mining_request is True,
         "mining_request_known": mining_request is not None,
+        "manual_mining": manager.manual_mining,
+        "manual_mining_initialized": manager.manual_mining_initialized,
         "auto_optimize": manager.auto_optimize,
         "auto_optimize_initialized": manager.auto_optimize_initialized,
         "market_ready": manager.economics_ready(),
