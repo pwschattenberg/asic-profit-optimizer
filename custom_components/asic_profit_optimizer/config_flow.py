@@ -27,26 +27,21 @@ from .const import (
 from .optimizer import parse_curve
 
 
+def _entity_selector(domain: str) -> selector.EntitySelector:
+    """Return an entity selector for one Home Assistant domain."""
+    return selector.EntitySelector(selector.EntitySelectorConfig(domain=domain))
+
+
 def _setup_schema() -> vol.Schema:
     """Build the initial miner setup form."""
     return vol.Schema(
         {
             vol.Required(CONF_NAME): selector.TextSelector(),
-            vol.Required(CONF_HASHPRICE_SENSOR): selector.EntitySelector(
-                selector.EntitySelectorConfig(domain="sensor")
-            ),
-            vol.Required(CONF_ELECTRICITY_PRICE_SENSOR): selector.EntitySelector(
-                selector.EntitySelectorConfig(domain="sensor")
-            ),
-            vol.Required(CONF_HASHRATE_SENSOR): selector.EntitySelector(
-                selector.EntitySelectorConfig(domain="sensor")
-            ),
-            vol.Required(CONF_POWER_SENSOR): selector.EntitySelector(
-                selector.EntitySelectorConfig(domain="sensor")
-            ),
-            vol.Required(CONF_POWER_LIMIT_ENTITY): selector.EntitySelector(
-                selector.EntitySelectorConfig(domain="number")
-            ),
+            vol.Required(CONF_HASHPRICE_SENSOR): _entity_selector("sensor"),
+            vol.Required(CONF_ELECTRICITY_PRICE_SENSOR): _entity_selector("sensor"),
+            vol.Required(CONF_HASHRATE_SENSOR): _entity_selector("sensor"),
+            vol.Required(CONF_POWER_SENSOR): _entity_selector("sensor"),
+            vol.Required(CONF_POWER_LIMIT_ENTITY): _entity_selector("number"),
             vol.Required(CONF_CURVE): selector.TextSelector(
                 selector.TextSelectorConfig(multiline=True)
             ),
@@ -73,10 +68,15 @@ def _setup_schema() -> vol.Schema:
 
 
 def _options_schema() -> vol.Schema:
-    """Build editable miner identity/profile options."""
+    """Build editable miner identity, source, profile, and tuning options."""
     return vol.Schema(
         {
             vol.Required(CONF_NAME): selector.TextSelector(),
+            vol.Required(CONF_HASHPRICE_SENSOR): _entity_selector("sensor"),
+            vol.Required(CONF_ELECTRICITY_PRICE_SENSOR): _entity_selector("sensor"),
+            vol.Required(CONF_HASHRATE_SENSOR): _entity_selector("sensor"),
+            vol.Required(CONF_POWER_SENSOR): _entity_selector("sensor"),
+            vol.Required(CONF_POWER_LIMIT_ENTITY): _entity_selector("number"),
             vol.Required(CONF_CURVE): selector.TextSelector(
                 selector.TextSelectorConfig(multiline=True)
             ),
@@ -115,7 +115,7 @@ def _initial_values() -> dict[str, Any]:
 
 
 def _validate_curve(user_input: dict[str, Any]) -> dict[str, str]:
-    """Validate the measured miner profile."""
+    """Validate the miner name and measured profile."""
     errors: dict[str, str] = {}
 
     if not str(user_input.get(CONF_NAME, "")).strip():
@@ -169,7 +169,15 @@ class AsicProfitOptimizerConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
 
 class AsicProfitOptimizerOptionsFlow(OptionsFlowWithReload):
-    """Edit miner name, power/hashrate profile and tuning behavior."""
+    """Edit miner sources, profile, identity, and tuning behavior."""
+
+    def _power_limit_already_used(self, entity_id: str) -> bool:
+        """Return whether another optimizer entry already owns this miner."""
+        return any(
+            entry.entry_id != self.config_entry.entry_id
+            and entry.unique_id == entity_id
+            for entry in self.hass.config_entries.async_entries(DOMAIN)
+        )
 
     async def async_step_init(
         self, user_input: dict[str, Any] | None = None
@@ -180,21 +188,35 @@ class AsicProfitOptimizerOptionsFlow(OptionsFlowWithReload):
 
         if user_input is not None:
             errors = _validate_curve(user_input)
+
+            if self._power_limit_already_used(user_input[CONF_POWER_LIMIT_ENTITY]):
+                errors[CONF_POWER_LIMIT_ENTITY] = "already_configured"
+
             if not errors:
                 user_input[CONF_NAME] = str(user_input[CONF_NAME]).strip()
 
-                # Keep the config-entry heading in Devices & services aligned
-                # with the miner name shown by the optimizer device.
+                # Keep the config-entry identity aligned when either the miner
+                # name or writable power-limit entity changes.
+                update_kwargs: dict[str, Any] = {}
                 if self.config_entry.title != user_input[CONF_NAME]:
+                    update_kwargs["title"] = user_input[CONF_NAME]
+                if self.config_entry.unique_id != user_input[CONF_POWER_LIMIT_ENTITY]:
+                    update_kwargs["unique_id"] = user_input[CONF_POWER_LIMIT_ENTITY]
+                if update_kwargs:
                     self.hass.config_entries.async_update_entry(
                         self.config_entry,
-                        title=user_input[CONF_NAME],
+                        **update_kwargs,
                     )
 
                 return self.async_create_entry(data=user_input)
 
         values = user_input or {
             CONF_NAME: current[CONF_NAME],
+            CONF_HASHPRICE_SENSOR: current[CONF_HASHPRICE_SENSOR],
+            CONF_ELECTRICITY_PRICE_SENSOR: current[CONF_ELECTRICITY_PRICE_SENSOR],
+            CONF_HASHRATE_SENSOR: current[CONF_HASHRATE_SENSOR],
+            CONF_POWER_SENSOR: current[CONF_POWER_SENSOR],
+            CONF_POWER_LIMIT_ENTITY: current[CONF_POWER_LIMIT_ENTITY],
             CONF_CURVE: current[CONF_CURVE],
             CONF_MIN_POWER_CHANGE: current.get(
                 CONF_MIN_POWER_CHANGE, DEFAULT_MIN_POWER_CHANGE
